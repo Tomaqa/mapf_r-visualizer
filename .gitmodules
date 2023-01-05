@@ -1,3 +1,7 @@
 [submodule "third_party/openFrameworks"]
 	path = third_party/openFrameworks
-	url = https://github.com/openframeworks/openFrameworks.git
+	url = https://github.com/Tomaqa/openFrameworks.git
+
+[submodule "third_party/mapf_r"]
+	path = third_party/mapf_r
+	url = https://gitlab.com/Tomaqa/mapf_r.git

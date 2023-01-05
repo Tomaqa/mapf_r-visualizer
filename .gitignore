@@ -39,3 +39,5 @@
 **/.DS_Store
 /build/
 /obj/
+/bin/
+*cache*/
