@@ -4,13 +4,11 @@
 
 #include "../include/param.hpp"
 
-static int get_scale(const Graph* G)
+static double get_scale(double width, double height)
 {
-  auto window_max_w =
-      default_screen_width - screen_x_buffer * 2 - window_x_buffer * 2;
-  auto window_max_h =
-      default_screen_height - window_y_top_buffer - window_y_bottom_buffer;
-  return std::min(window_max_w / G->width, window_max_h / G->height) + 1;
+  auto window_max_w = default_screen_width - 2*screen_x_buffer - 2*window_x_buffer;
+  auto window_max_h = default_screen_height - window_y_top_buffer - window_y_bottom_buffer;
+  return std::min(window_max_w/width, window_max_h/height) + 1;
 }
 
 static void printKeys()
@@ -20,7 +18,7 @@ static void printKeys()
   std::cout << "- l : loop or not" << std::endl;
   std::cout << "- r : reset" << std::endl;
   std::cout << "- v : show virtual line to goals" << std::endl;
-  std::cout << "- f : show agent & node id" << std::endl;
+  std::cout << "- f : show agent & vertex id" << std::endl;
   std::cout << "- g : show goals" << std::endl;
   std::cout << "- right : progress" << std::endl;
   std::cout << "- left  : back" << std::endl;
@@ -30,29 +28,36 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(Graph* _G, Solution* _P)
-    : G(_G),
-      P(_P),
-      N(P->front().size()),
-      T(P->size() - 1),
-      goals(P->back()),
-      scale(get_scale(G)),
-      agent_rad(scale / std::sqrt(2) / 2),
-      goal_rad(scale / 4.0),
-      font_size(std::max(scale / 8, 6)),
-      flg_autoplay(true),
-      flg_loop(true),
-      flg_goal(true),
-      flg_font(false),
-      flg_snapshot(false),
-      line_mode(LINE_MODE::STRAIGHT)
+//- ofApp::ofApp(const Graph& g, Solution* _P)
+ofApp::ofApp(const Graph& g)
+    : graph(g)
+    , graph_prop(graph::make_properties(g))
+    //- , P(_P)
+    //- , N(P->front().size())
+    //- , T(P->size() - 1)
+    //- , goals(P->back())
+    , scale(get_scale(width, height))
 {
+  assert(width > 0.);
+  assert(height > 0.);
+  assert(scale > 0.);
+}
+
+Coord ofApp::adjusted_pos(Coord pos) const
+{
+  pos.y = graph_prop.max.y - pos.y;
+  pos *= scale;
+  pos += scale/2;
+  pos.x += window_x_buffer;
+  pos.y += window_y_top_buffer;
+
+  return pos;
 }
 
 void ofApp::setup()
 {
-  auto w = G->width * scale + 2 * window_x_buffer;
-  auto h = G->height * scale + window_y_top_buffer + window_y_bottom_buffer;
+  auto w = width*scale + 2*window_x_buffer;
+  auto h = height*scale + window_y_top_buffer + window_y_bottom_buffer;
   ofSetWindowShape(w, h);
   ofBackground(Color::bg);
   ofSetCircleResolution(32);
@@ -61,11 +66,12 @@ void ofApp::setup()
 
   // setup gui
   gui.setup();
-  gui.add(timestep_slider.setup("time step", 0, 0, T));
+  //- gui.add(timestep_slider.setup("time step", 0, 0, T));
+  gui.add(timestep_slider.setup("time step", 0, 0, 1));
   gui.add(speed_slider.setup("speed", 0.1, 0, 1));
 
   cam.setVFlip(true);
-  cam.setGlobalPosition(ofVec3f(w / 2, h / 2 - window_y_top_buffer / 2, 580));
+  cam.setGlobalPosition(ofVec3f(w/2, h/2 - window_y_top_buffer/2, 580));
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
@@ -77,17 +83,19 @@ void ofApp::update()
   if (!flg_autoplay) return;
 
   // t <- t + speed
+  /*
   float t = timestep_slider + speed_slider;
   if (t <= T) {
     timestep_slider = t;
-  } else {
-    timestep_slider = 0;
-    if (flg_loop) {
-      timestep_slider = 0;
-    } else {
-      timestep_slider = T;
-    }
   }
+  else if (flg_loop) {
+    timestep_slider = 0;
+  }
+  else {
+    timestep_slider = T;
+  }
+  */
+  timestep_slider = 0;
 }
 
 void ofApp::draw()
@@ -101,25 +109,31 @@ void ofApp::draw()
   }
 
   // draw graph
-  ofSetLineWidth(1);
+  ofSetLineWidth(10);
   ofFill();
-  for (int x = 0; x < G->width; ++x) {
-    for (int y = 0; y < G->height; ++y) {
-      auto index = x + y * G->width;
-      if (G->U[index] == nullptr) continue;
-      ofSetColor(Color::node);
-      auto x_draw = x * scale - scale / 2 + window_x_buffer + scale / 2 - 0.15;
-      auto y_draw =
-          y * scale - scale / 2 + window_y_top_buffer + scale / 2 - 0.15;
-      ofDrawRectangle(x_draw, y_draw, scale - 0.3, scale - 0.3);
-      if (flg_font) {
-        ofSetColor(Color::font);
-        font.drawString(std::to_string(index), x_draw + 1,
-                        y_draw + font_size + 1);
-      }
+  for (auto& vertex : graph.cvertices()) {
+    auto& vid = vertex.cid();
+    const Coord pos = adjusted_pos(vertex.cpos());
+
+    for (auto& nid : vertex.cneighbors()) {
+      assert(nid != vid);
+      if (vid > nid) continue;
+      auto& neighbor = graph.cvertex(nid);
+      const Coord npos = adjusted_pos(neighbor.cpos());
+      ofSetColor(Color::edge);
+      ofDrawLine(pos.x, pos.y, npos.x, npos.y);
+    }
+
+    ofSetColor(Color::vertex);
+    ofDrawCircle(pos.x, pos.y, vertex_rad);
+
+    if (flg_font) {
+      ofSetColor(Color::font);
+      font.drawString(std::to_string(vid), pos.x + 1, pos.y + font_size + 1);
     }
   }
 
+  /*
   // draw goals
   if (flg_goal) {
     for (int i = 0; i < N; ++i) {
@@ -190,6 +204,7 @@ void ofApp::draw()
       font.drawString(std::to_string(i), x - font_size / 2, y + font_size / 2);
     }
   }
+  */
 
   if (flg_snapshot) {
     ofEndSaveScreenAsPDF();
@@ -218,11 +233,12 @@ void ofApp::keyPressed(int key)
   float t;
   if (key == OF_KEY_RIGHT) {
     t = timestep_slider + speed_slider;
-    timestep_slider = std::min((float)T, t);
+    //- timestep_slider = std::min((float)T, t);
+    timestep_slider = std::min(1.f, t);
   }
   if (key == OF_KEY_LEFT) {
     t = timestep_slider - speed_slider;
-    timestep_slider = std::max((float)0, t);
+    timestep_slider = std::max(0.f, t);
   }
   if (key == OF_KEY_UP) {
     t = speed_slider + 0.001;

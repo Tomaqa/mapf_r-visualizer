@@ -1,15 +1,15 @@
 #include <fstream>
 #include <iostream>
-#include <regex>
+//- #include <regex>
 
 #include "../include/ofApp.hpp"
 #include "ofMain.h"
 
-const std::regex r_config = std::regex(R"(^\d+:(.+))");
-const std::regex r_pos = std::regex(R"(\((\d+),(\d+)\),)");
+//- const std::regex r_config = std::regex(R"(^\d+:(.+))");
+//- const std::regex r_pos = std::regex(R"(\((\d+),(\d+)\),)");
 
 int main(int argc, char *argv[])
-{
+try {
   // simple arguments check
   if (argc != 3 || !std::ifstream(argv[1]) || !std::ifstream(argv[2])) {
     std::cout << "Please check the arguments, e.g.,\n"
@@ -20,8 +20,10 @@ int main(int argc, char *argv[])
   }
 
   // load graph
-  Graph G(argv[1]);
+  ifstream g_ifs(argv[1]);
+  Graph g(g_ifs);
 
+  /*
   // // load plan
   auto solution_file = std::ifstream(argv[2]);
   Solution solution;
@@ -42,9 +44,15 @@ int main(int argc, char *argv[])
     }
   }
   solution_file.close();
+  */
 
   // visualize
   ofSetupOpenGL(100, 100, OF_WINDOW);
-  ofRunApp(new ofApp(&G, &solution));
+  //- ofRunApp(new ofApp(&G, &solution));
+  ofRunApp(new ofApp(g));
   return 0;
+}
+catch (const Error& err) {
+  std::cerr << err << std::endl;
+  return 1;
 }

@@ -9,14 +9,14 @@ static constexpr int window_x_buffer = 25;
 static constexpr int window_y_top_buffer = 50;
 static constexpr int window_y_bottom_buffer = 25;
 
-// // color scheme
+// color scheme
 namespace Color
 {
-  static const ofColor bg = ofColor(0, 0, 0);
-  static const ofColor node = ofColor(255, 255, 255);
+  static const ofColor bg = ofColor(255, 255, 255);
+  static const ofColor vertex = ofColor(0, 0, 0);
   static const ofColor font = ofColor(100, 100, 100);
-  static const ofColor font_info = ofColor(255, 255, 255);
-  static const ofColor edge = ofColor(200, 200, 200);
+  static const ofColor font_info = ofColor(0, 0, 0);
+  static const ofColor edge = ofColor(100, 100, 100);
   static const std::vector<ofColor> agents = {
       ofColor(233, 30, 99),  ofColor(33, 150, 243), ofColor(76, 175, 80),
       ofColor(255, 152, 0),  ofColor(0, 188, 212),  ofColor(156, 39, 176),
