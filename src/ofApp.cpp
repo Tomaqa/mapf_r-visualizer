@@ -41,7 +41,17 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
   expect(layout.size() == plan.size(),
          "Size of agent goals and plan mismatch: "s
          + to_string(layout.size()) + " != " + to_string(plan.size()));
-  assert(n_agents == int(layout.size()));
+
+  const int n_agents = layout.size();
+  agents.reserve(n_agents);
+  for (auto& [aid, sid] : layout.cstart_ids()) {
+    auto& start = graph.cvertex(sid);
+    auto& first_step = plan.cat(aid).csteps().front();
+    assert(first_step.from_id == sid);
+    auto& next_id = first_step.to_id;
+    auto& next = graph.cvertex(next_id);
+    agents.emplace_back(aid, 1., 1., make_pair(start.cpos(), next.cpos()));
+  }
 }
 
 Coord ofApp::adjusted_pos(Coord pos) const
@@ -82,17 +92,34 @@ void ofApp::update()
 {
   if (!flg_autoplay) return;
 
-  // t <- t + speed
-  float t = timestep_slider + speed_slider;
-  if (t <= makespan) {
-    timestep_slider = t;
+  const double step = speed_slider;
+  const double t = timestep_slider;
+  const double t_next = t + step;
+
+  if (t_next <= makespan) {
+    timestep_slider = t_next;
+
+    for (auto& ag : agents) {
+      ag.advance(step);
+    }
   }
   else if (flg_loop) {
     timestep_slider = 0;
+
+    for (auto& ag : agents) {
+      auto& aid = ag.cid();
+      auto& first_step = plan.cat(aid).csteps().front();
+      ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
+    }
   }
   else {
     timestep_slider = makespan;
   }
+}
+
+static void set_agent_color(const agent::Id& aid)
+{
+  ofSetColor(Color::agents[aid % Color::agents.size()]);
 }
 
 void ofApp::draw()
@@ -122,8 +149,7 @@ void ofApp::draw()
     }
 
     if (const agent::Id* aid_l; flg_goal && (aid_l = layout.find_agent_id_of_goal(vid))) {
-      auto& aid = *aid_l;
-      ofSetColor(Color::agents[aid % Color::agents.size()]);
+      set_agent_color(*aid_l);
     }
     else {
       ofSetColor(Color::vertex);
@@ -136,30 +162,14 @@ void ofApp::draw()
     }
   }
 
-  /*
   // draw agents
-  for (int i = 0; i < N; ++i) {
-    ofSetColor(Color::agents[i % Color::agents.size()]);
-    auto t1 = (int)timestep_slider;
-    auto t2 = t1 + 1;
+  for (auto& ag : agents) {
+    auto& aid = ag.cid();
+    const Coord pos = adjusted_pos(ag.cpos());
+    set_agent_color(aid);
+    ofDrawCircle(pos.x, pos.y, agent_rad);
 
-    // agent position
-    auto v = P->at(t1)[i];
-    float x = v->x;
-    float y = v->y;
-
-    if (t2 <= T) {
-      auto u = P->at(t2)[i];
-      x += (u->x - x) * (timestep_slider - t1);
-      y += (u->y - y) * (timestep_slider - t1);
-    }
-    x *= scale;
-    y *= scale;
-    x += window_x_buffer + scale / 2;
-    y += window_y_top_buffer + scale / 2;
-
-    ofDrawCircle(x, y, agent_rad);
-
+    /*
     // goal
     if (line_mode == LINE_MODE::STRAIGHT) {
       ofDrawLine(goals[i]->x * scale + window_x_buffer + scale / 2,
@@ -195,8 +205,8 @@ void ofApp::draw()
       ofSetColor(Color::font);
       font.drawString(std::to_string(i), x - font_size / 2, y + font_size / 2);
     }
+    */
   }
-  */
 
   if (flg_snapshot) {
     ofEndSaveScreenAsPDF();

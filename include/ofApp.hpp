@@ -15,7 +15,7 @@ struct ofApp : ofBaseApp {
   const agent::Layout& layout;
   const agent::Plan& plan;
 
-  const int n_agents = layout.size();
+  Agents agents{};
   const double makespan = plan.makespan();
 
   // size
