@@ -2,6 +2,7 @@
 
 #include "mapf_r/graph.hpp"
 #include "mapf_r/graph/alg.hpp"
+#include "mapf_r/agent/plan.hpp"
 
 #include "ofMain.h"
 #include "ofxGui.h"
@@ -10,18 +11,18 @@ using namespace mapf_r;
 
 struct ofApp : ofBaseApp {
   const Graph& graph;
-  const graph::Properties graph_prop;
-  //- const Solution* P;  // plan
-  //- const int N;        // number of agents
-  //- const int T;        // makespan
-  //- const Config goals;
+  const graph::Properties graph_prop{graph::make_properties(graph)};
+  const agent::Layout& layout;
+  const agent::Plan& plan;
+
+  const int n_agents = layout.size();
+  const double makespan = plan.makespan();
 
   // size
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
   const double scale;
   const double vertex_rad = scale/8;
   const double agent_rad = scale/sqrt(2)/2;
-  const double goal_rad = scale/4;
   const int font_size = max(int(scale/8), 6);
 
   // flg
@@ -45,8 +46,7 @@ struct ofApp : ofBaseApp {
   // camera
   ofEasyCam cam;
 
-  //- ofApp(const Graph&, Solution* _P);
-  ofApp(const Graph&);
+  ofApp(const Graph&, const agent::Layout&, const agent::Plan&);
 
   Coord adjusted_pos(Coord) const;
 

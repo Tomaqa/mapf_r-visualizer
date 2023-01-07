@@ -46,10 +46,20 @@ try {
   solution_file.close();
   */
 
+  agent::Layout layout = {
+    { {0, 0}, {1, 4}, {2, 6} },
+    { {0, 8}, {1, 9}, {2, 3} },
+  };
+
+  agent::Plan plan = {
+    {0, {}},
+    {1, {}},
+    {2, {}},
+  };
+
   // visualize
   ofSetupOpenGL(100, 100, OF_WINDOW);
-  //- ofRunApp(new ofApp(&G, &solution));
-  ofRunApp(new ofApp(g));
+  ofRunApp(new ofApp(g, layout, plan));
   return 0;
 }
 catch (const Error& err) {

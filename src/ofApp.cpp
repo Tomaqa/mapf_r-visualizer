@@ -28,19 +28,20 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-//- ofApp::ofApp(const Graph& g, Solution* _P)
-ofApp::ofApp(const Graph& g)
+ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
     : graph(g)
-    , graph_prop(graph::make_properties(g))
-    //- , P(_P)
-    //- , N(P->front().size())
-    //- , T(P->size() - 1)
-    //- , goals(P->back())
+    , layout(l)
+    , plan(ps)
     , scale(get_scale(width, height))
 {
   assert(width > 0.);
   assert(height > 0.);
   assert(scale > 0.);
+
+  expect(layout.size() == plan.size(),
+         "Size of agent goals and plan mismatch: "s
+         + to_string(layout.size()) + " != " + to_string(plan.size()));
+  assert(n_agents == int(layout.size()));
 }
 
 Coord ofApp::adjusted_pos(Coord pos) const
@@ -66,8 +67,7 @@ void ofApp::setup()
 
   // setup gui
   gui.setup();
-  //- gui.add(timestep_slider.setup("time step", 0, 0, T));
-  gui.add(timestep_slider.setup("time step", 0, 0, 1));
+  gui.add(timestep_slider.setup("time step", 0, 0, makespan));
   gui.add(speed_slider.setup("speed", 0.1, 0, 1));
 
   cam.setVFlip(true);
@@ -83,19 +83,16 @@ void ofApp::update()
   if (!flg_autoplay) return;
 
   // t <- t + speed
-  /*
   float t = timestep_slider + speed_slider;
-  if (t <= T) {
+  if (t <= makespan) {
     timestep_slider = t;
   }
   else if (flg_loop) {
     timestep_slider = 0;
   }
   else {
-    timestep_slider = T;
+    timestep_slider = makespan;
   }
-  */
-  timestep_slider = 0;
 }
 
 void ofApp::draw()
@@ -124,7 +121,13 @@ void ofApp::draw()
       ofDrawLine(pos.x, pos.y, npos.x, npos.y);
     }
 
-    ofSetColor(Color::vertex);
+    if (const agent::Id* aid_l; flg_goal && (aid_l = layout.find_agent_id_of_goal(vid))) {
+      auto& aid = *aid_l;
+      ofSetColor(Color::agents[aid % Color::agents.size()]);
+    }
+    else {
+      ofSetColor(Color::vertex);
+    }
     ofDrawCircle(pos.x, pos.y, vertex_rad);
 
     if (flg_font) {
@@ -134,17 +137,6 @@ void ofApp::draw()
   }
 
   /*
-  // draw goals
-  if (flg_goal) {
-    for (int i = 0; i < N; ++i) {
-      ofSetColor(Color::agents[i % Color::agents.size()]);
-      auto g = goals[i];
-      int x = g->x * scale + window_x_buffer + scale / 2;
-      int y = g->y * scale + window_y_top_buffer + scale / 2;
-      ofDrawRectangle(x - goal_rad / 2, y - goal_rad / 2, goal_rad, goal_rad);
-    }
-  }
-
   // draw agents
   for (int i = 0; i < N; ++i) {
     ofSetColor(Color::agents[i % Color::agents.size()]);
@@ -230,23 +222,22 @@ void ofApp::keyPressed(int key)
     line_mode =
         static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
   }
-  float t;
+  double t;
   if (key == OF_KEY_RIGHT) {
     t = timestep_slider + speed_slider;
-    //- timestep_slider = std::min((float)T, t);
-    timestep_slider = std::min(1.f, t);
+    timestep_slider = std::min(makespan, t);
   }
   if (key == OF_KEY_LEFT) {
     t = timestep_slider - speed_slider;
-    timestep_slider = std::max(0.f, t);
+    timestep_slider = std::max(0., t);
   }
   if (key == OF_KEY_UP) {
     t = speed_slider + 0.001;
-    speed_slider = std::min(t, (float)speed_slider.getMax());
+    speed_slider = std::min(float(t), speed_slider.getMax());
   }
   if (key == OF_KEY_DOWN) {
     t = speed_slider - 0.001;
-    speed_slider = std::max(t, (float)speed_slider.getMin());
+    speed_slider = std::max(float(t), speed_slider.getMin());
   }
 }
 
