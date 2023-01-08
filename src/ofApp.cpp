@@ -48,13 +48,21 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
     agent::Id aid = i;
     auto& sid = layout.cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
-    auto& first_step = plan.cat(aid).csteps().front();
+    auto& first_step = plan.cat(aid).cfirst_step();
     assert(first_step.from_id == sid);
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
     assert(aid == int(agents.size()));
     agents.emplace_back(aid, 0.5, 1., make_pair(start.cpos(), next.cpos()));
-    first_time_threshold = min(first_time_threshold, first_step.final_time());
+    if (first_step.wait_time == 0) {
+      first_time_threshold = min(first_time_threshold, first_step.final_time());
+      assert(!agents.back().idle());
+    }
+    else {
+      agents.back().reset_v();
+      assert(agents.back().idle());
+      first_time_threshold = min(first_time_threshold, first_step.wait_abs_time());
+    }
   }
   agents_step_idx.resize(n_agents);
 
@@ -109,8 +117,16 @@ void ofApp::reset()
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    auto& first_step = plan.cat(aid).csteps().front();
-    ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
+    auto& first_step = plan.cat(aid).cfirst_step();
+    if (first_step.wait_time == 0) {
+      ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
+      assert(!ag.idle());
+    }
+    else {
+      ag.set_pos(graph.cvertex(first_step.from_id).cpos());
+      ag.reset_v();
+      assert(ag.idle());
+    }
     agents_step_idx[aid] = 0;
   }
 }
@@ -146,16 +162,25 @@ void ofApp::doStep(double step)
   timestep_slider = time_threshold;
   const double step_to_threshold = time_threshold - t;
   for (auto& ag : agents) {
-    ag.advance(step_to_threshold);
+    const bool idle = ag.idle();
+    if (!idle) ag.advance(step_to_threshold);
 
     auto& aid = ag.cid();
     auto& curr_step_idx = agents_step_idx[aid];
     auto& steps = plan.cat(aid).csteps();
     if (curr_step_idx == steps.size()) continue;
     auto curr_step_l = &steps[curr_step_idx];
+    const double ag_time_threshold = idle ? curr_step_l->wait_abs_time() : curr_step_l->final_time();
+    if (!apx_equal(time_threshold, ag_time_threshold)) continue;
+
     auto& to = graph.cvertex(curr_step_l->to_id);
-    if (!apx_equal(time_threshold, curr_step_l->final_time())) continue;
-    assert(apx_equal(ag.cpos(), to.cpos(), huge_rel_eps, huge_abs_eps));
+    assert(idle || apx_equal(ag.cpos(), to.cpos(), huge_rel_eps, huge_abs_eps));
+    assert(!idle || ag.cpos() == graph.cvertex(curr_step_l->from_id).cpos());
+
+    if (idle) {
+      ag.set_v(to.cpos());
+      continue;
+    }
 
     if (++curr_step_idx == steps.size()) {
       ag.reset_v();
@@ -164,8 +189,14 @@ void ofApp::doStep(double step)
 
     ++curr_step_l;
     assert(curr_step_l->from_id == to.cid());
-    auto& new_to = graph.cvertex(curr_step_l->to_id);
-    ag.set(to.cpos(), new_to.cpos());
+    if (curr_step_l->wait_time == 0) {
+      auto& new_to = graph.cvertex(curr_step_l->to_id);
+      ag.set(to.cpos(), new_to.cpos());
+    }
+    else {
+      ag.set_pos(to.cpos());
+      ag.reset_v();
+    }
   }
 
   time_threshold = min(agents, [&](auto& ag) -> double {
@@ -174,7 +205,7 @@ void ofApp::doStep(double step)
     auto& steps = plan.cat(aid).csteps();
     if (curr_step_idx == steps.size()) return inf;
     auto& curr_step = steps[curr_step_idx];
-    return curr_step.final_time();
+    return ag.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
   });
 }
 
