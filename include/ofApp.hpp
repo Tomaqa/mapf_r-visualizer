@@ -13,10 +13,13 @@ struct ofApp : ofBaseApp {
   const Graph& graph;
   const graph::Properties graph_prop{graph::make_properties(graph)};
   const agent::Layout& layout;
-  const agent::Plan& plan;
 
+  const agent::Plan& plan;
   Agents agents{};
   const double makespan = plan.makespan();
+  double first_time_threshold{inf};
+  double time_threshold{inf};
+  Vector<Idx> agents_step_idx{};
 
   // size
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
@@ -51,6 +54,7 @@ struct ofApp : ofBaseApp {
   Coord adjusted_pos(Coord) const;
 
   void setup() override;
+  void reset();
   void update() override;
   void draw() override;
 

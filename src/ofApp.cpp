@@ -44,14 +44,22 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
 
   const int n_agents = layout.size();
   agents.reserve(n_agents);
-  for (auto& [aid, sid] : layout.cstart_ids()) {
+  for (int i = 0; i < n_agents; ++i) {
+    agent::Id aid = i;
+    auto& sid = layout.cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
     auto& first_step = plan.cat(aid).csteps().front();
     assert(first_step.from_id == sid);
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
+    assert(aid == int(agents.size()));
     agents.emplace_back(aid, 1., 1., make_pair(start.cpos(), next.cpos()));
+    first_time_threshold = min(first_time_threshold, first_step.final_time());
   }
+  agents_step_idx.resize(n_agents);
+
+  assert(first_time_threshold <= makespan);
+  time_threshold = first_time_threshold;
 }
 
 Coord ofApp::adjusted_pos(Coord pos) const
@@ -88,6 +96,19 @@ void ofApp::setup()
   printKeys();
 }
 
+void ofApp::reset()
+{
+  timestep_slider = 0;
+  time_threshold = first_time_threshold;
+  for (auto& ag : agents) {
+    auto& aid = ag.cid();
+    auto& first_step = plan.cat(aid).csteps().front();
+    ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
+    agents_step_idx[aid] = 0;
+  }
+}
+
+
 void ofApp::update()
 {
   if (!flg_autoplay) return;
@@ -96,25 +117,58 @@ void ofApp::update()
   const double t = timestep_slider;
   const double t_next = t + step;
 
-  if (t_next <= makespan) {
+  assert(t < time_threshold || t == makespan);
+  assert(!(t_next < time_threshold && t_next > makespan));
+
+  if (t_next < time_threshold) {
     timestep_slider = t_next;
 
     for (auto& ag : agents) {
       ag.advance(step);
     }
+    return;
   }
-  else if (flg_loop) {
-    timestep_slider = 0;
 
-    for (auto& ag : agents) {
-      auto& aid = ag.cid();
-      auto& first_step = plan.cat(aid).csteps().front();
-      ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
-    }
-  }
-  else {
+  if (t_next > makespan) {
+    if (flg_loop) return reset();
+
     timestep_slider = makespan;
+    return;
   }
+
+  timestep_slider = time_threshold;
+  const double step_to_threshold = time_threshold - t;
+  for (auto& ag : agents) {
+    ag.advance(step_to_threshold);
+
+    auto& aid = ag.cid();
+    auto& curr_step_idx = agents_step_idx[aid];
+    auto& steps = plan.cat(aid).csteps();
+    if (curr_step_idx == steps.size()) continue;
+    auto curr_step_l = &steps[curr_step_idx];
+    auto& to = graph.cvertex(curr_step_l->to_id);
+    if (!apx_equal(time_threshold, curr_step_l->final_time())) continue;
+    assert(apx_equal(ag.cpos(), to.cpos(), huge_rel_eps, huge_abs_eps));
+
+    if (++curr_step_idx == steps.size()) {
+      ag.reset_v();
+      continue;
+    }
+
+    ++curr_step_l;
+    assert(curr_step_l->from_id == to.cid());
+    auto& new_to = graph.cvertex(curr_step_l->to_id);
+    ag.set(to.cpos(), new_to.cpos());
+  }
+
+  time_threshold = min(agents, [&](auto& ag) -> double {
+    auto& aid = ag.cid();
+    auto& curr_step_idx = agents_step_idx[aid];
+    auto& steps = plan.cat(aid).csteps();
+    if (curr_step_idx == steps.size()) return inf;
+    auto& curr_step = steps[curr_step_idx];
+    return curr_step.final_time();
+  });
 }
 
 static void set_agent_color(const agent::Id& aid)
@@ -219,7 +273,7 @@ void ofApp::draw()
 
 void ofApp::keyPressed(int key)
 {
-  if (key == 'r') timestep_slider = 0;  // reset
+  if (key == 'r') reset();
   if (key == 'p') flg_autoplay = !flg_autoplay;
   if (key == 'l') flg_loop = !flg_loop;
   if (key == 'g') flg_goal = !flg_goal;
@@ -229,25 +283,19 @@ void ofApp::keyPressed(int key)
   }
   if (key == 32) flg_snapshot = true;  // space
   if (key == 'v') {
-    line_mode =
-        static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
+    line_mode = static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
   }
-  double t;
   if (key == OF_KEY_RIGHT) {
-    t = timestep_slider + speed_slider;
-    timestep_slider = std::min(makespan, t);
+    timestep_slider = min(float(time_threshold), timestep_slider + speed_slider);
   }
   if (key == OF_KEY_LEFT) {
-    t = timestep_slider - speed_slider;
-    timestep_slider = std::max(0., t);
+    timestep_slider = max(0.f, timestep_slider - speed_slider);
   }
   if (key == OF_KEY_UP) {
-    t = speed_slider + 0.001;
-    speed_slider = std::min(float(t), speed_slider.getMax());
+    speed_slider = std::min(speed_slider + 0.001f, speed_slider.getMax());
   }
   if (key == OF_KEY_DOWN) {
-    t = speed_slider - 0.001;
-    speed_slider = std::max(float(t), speed_slider.getMin());
+    speed_slider = std::max(speed_slider - 0.001f, speed_slider.getMin());
   }
 }
 
