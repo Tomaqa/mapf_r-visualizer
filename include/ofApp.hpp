@@ -56,6 +56,7 @@ struct ofApp : ofBaseApp {
 
   void setup() override;
   void reset();
+  void doStep(double step);
   void update() override;
   void draw() override;
 

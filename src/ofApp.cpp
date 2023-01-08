@@ -93,7 +93,7 @@ void ofApp::setup()
   // setup gui
   gui.setup();
   gui.add(timestep_slider.setup("time step", 0, 0, makespan));
-  gui.add(speed_slider.setup("speed", 0.1, 0, 1));
+  gui.add(speed_slider.setup("speed", 0.05, 0, 0.5));
 
   cam.setVFlip(true);
   cam.setGlobalPosition(ofVec3f(w/2, h/2 - window_y_top_buffer/2, 580));
@@ -115,17 +115,24 @@ void ofApp::reset()
   }
 }
 
-
-void ofApp::update()
+void ofApp::doStep(double step)
 {
-  if (!flg_autoplay) return;
-
-  const double step = speed_slider;
   const double t = timestep_slider;
   const double t_next = t + step;
 
   assert(t < time_threshold || t == makespan);
   assert(!(t_next < time_threshold && t_next > makespan));
+
+  if (t_next < 0) {
+    return reset();
+  }
+
+  if (t_next > makespan) {
+    if (flg_loop) return reset();
+
+    timestep_slider = makespan;
+    return;
+  }
 
   if (t_next < time_threshold) {
     timestep_slider = t_next;
@@ -133,13 +140,6 @@ void ofApp::update()
     for (auto& ag : agents) {
       ag.advance(step);
     }
-    return;
-  }
-
-  if (t_next > makespan) {
-    if (flg_loop) return reset();
-
-    timestep_slider = makespan;
     return;
   }
 
@@ -176,6 +176,13 @@ void ofApp::update()
     auto& curr_step = steps[curr_step_idx];
     return curr_step.final_time();
   });
+}
+
+void ofApp::update()
+{
+  if (!flg_autoplay) return;
+
+  doStep(speed_slider);
 }
 
 static void set_agent_color(const agent::Id& aid)
@@ -280,29 +287,38 @@ void ofApp::draw()
 
 void ofApp::keyPressed(int key)
 {
-  if (key == 'r') reset();
-  if (key == 'p') flg_autoplay = !flg_autoplay;
-  if (key == 'l') flg_loop = !flg_loop;
-  if (key == 'g') flg_goal = !flg_goal;
-  if (key == 'f') {
+  switch (key) {
+  case 'r':
+    return reset();
+  case 'p':
+    flg_autoplay = !flg_autoplay;
+    return;
+  case 'l':
+    flg_loop = !flg_loop;
+    return;
+  case 'g':
+    flg_goal = !flg_goal;
+    return;
+  case 'f':
     flg_font = !flg_font;
     flg_font &= (scale - font_size > 6);
-  }
-  if (key == 32) flg_snapshot = true;  // space
-  if (key == 'v') {
+    return;
+  case 32:
+    flg_snapshot = true;  // space
+    return;
+  case 'v':
     line_mode = static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
-  }
-  if (key == OF_KEY_RIGHT) {
-    timestep_slider = min(float(time_threshold), timestep_slider + speed_slider);
-  }
-  if (key == OF_KEY_LEFT) {
-    timestep_slider = max(0.f, timestep_slider - speed_slider);
-  }
-  if (key == OF_KEY_UP) {
-    speed_slider = std::min(speed_slider + 0.001f, speed_slider.getMax());
-  }
-  if (key == OF_KEY_DOWN) {
-    speed_slider = std::max(speed_slider - 0.001f, speed_slider.getMin());
+    return;
+  case OF_KEY_RIGHT:
+    return doStep(speed_slider);
+  case OF_KEY_LEFT:
+    return doStep(-speed_slider);
+  case OF_KEY_UP:
+    speed_slider = std::min(speed_slider + 0.01f, speed_slider.getMax());
+    return;
+  case OF_KEY_DOWN:
+    speed_slider = std::max(speed_slider - 0.01f, speed_slider.getMin());
+    return;
   }
 }
 
