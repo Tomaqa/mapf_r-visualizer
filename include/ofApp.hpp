@@ -25,7 +25,6 @@ struct ofApp : ofBaseApp {
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
   const double scale;
   const double vertex_rad = scale/8;
-  const double agent_rad = scale/sqrt(2)/2;
   const int font_size = max(int(scale/8), 6);
 
   // flg
@@ -51,7 +50,9 @@ struct ofApp : ofBaseApp {
 
   ofApp(const Graph&, const agent::Layout&, const agent::Plan&);
 
-  Coord adjusted_pos(Coord) const;
+  Real adjusted_radius_of(const Agent&) const;
+  template <typename T>
+  Coord adjusted_pos_of(const T&) const;
 
   void setup() override;
   void reset();

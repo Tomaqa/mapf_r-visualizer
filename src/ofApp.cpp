@@ -53,7 +53,7 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
     assert(aid == int(agents.size()));
-    agents.emplace_back(aid, 1., 1., make_pair(start.cpos(), next.cpos()));
+    agents.emplace_back(aid, 0.5, 1., make_pair(start.cpos(), next.cpos()));
     first_time_threshold = min(first_time_threshold, first_step.final_time());
   }
   agents_step_idx.resize(n_agents);
@@ -62,8 +62,15 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
   time_threshold = first_time_threshold;
 }
 
-Coord ofApp::adjusted_pos(Coord pos) const
+Real ofApp::adjusted_radius_of(const Agent& ag) const
 {
+  return ag.cradius()*scale;
+}
+
+template <typename T>
+Coord ofApp::adjusted_pos_of(const T& t) const
+{
+  auto pos = t.cpos();
   pos.y = graph_prop.max.y - pos.y;
   pos *= scale;
   pos += scale/2;
@@ -191,13 +198,13 @@ void ofApp::draw()
   ofFill();
   for (auto& vertex : graph.cvertices()) {
     auto& vid = vertex.cid();
-    const Coord pos = adjusted_pos(vertex.cpos());
+    const Coord pos = adjusted_pos_of(vertex);
 
     for (auto& nid : vertex.cneighbors()) {
       assert(nid != vid);
       if (vid > nid) continue;
       auto& neighbor = graph.cvertex(nid);
-      const Coord npos = adjusted_pos(neighbor.cpos());
+      const Coord npos = adjusted_pos_of(neighbor);
       ofSetColor(Color::edge);
       ofDrawLine(pos.x, pos.y, npos.x, npos.y);
     }
@@ -219,9 +226,9 @@ void ofApp::draw()
   // draw agents
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    const Coord pos = adjusted_pos(ag.cpos());
+    const Coord pos = adjusted_pos_of(ag);
     set_agent_color(aid);
-    ofDrawCircle(pos.x, pos.y, agent_rad);
+    ofDrawCircle(pos.x, pos.y, adjusted_radius_of(ag));
 
     /*
     // goal
