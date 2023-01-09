@@ -21,10 +21,8 @@ try {
   ifstream g_ifs(argv[1]);
   Graph g(g_ifs);
 
-  agent::Layout layout = {
-    { {0, 0}, {1, 4}, {2, 6} },
-    { {0, 8}, {1, 9}, {2, 3} },
-  };
+  ifstream l_ifs(argv[2]);
+  agent::Layout layout(l_ifs);
 
   smt::solver::Z3 solver;
   solver.set_graph(g);

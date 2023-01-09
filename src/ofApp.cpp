@@ -238,7 +238,7 @@ void ofApp::draw()
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
 
-    for (auto& nid : vertex.cneighbors()) {
+    for (auto& nid : vertex.cneighbor_ids()) {
       assert(nid != vid);
       if (vid > nid) continue;
       auto& neighbor = graph.cvertex(nid);
