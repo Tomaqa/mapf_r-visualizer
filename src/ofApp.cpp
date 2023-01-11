@@ -123,8 +123,7 @@ void ofApp::reset()
       assert(!ag.idle());
     }
     else {
-      ag.set_pos(graph.cvertex(first_step.from_id).cpos());
-      ag.reset_v();
+      ag.reset_at_pos(graph.cvertex(first_step.from_id).cpos());
       assert(ag.idle());
     }
     agents_step_idx[aid] = 0;
@@ -194,8 +193,7 @@ void ofApp::doStep(double step)
       ag.set(to.cpos(), new_to.cpos());
     }
     else {
-      ag.set_pos(to.cpos());
-      ag.reset_v();
+      ag.reset_at_pos(to.cpos());
     }
   }
 
