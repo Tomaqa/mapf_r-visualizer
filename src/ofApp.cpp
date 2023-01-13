@@ -28,17 +28,18 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
+ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     : graph(g)
     , layout(l)
-    , plan(ps)
+    , plan(p)
     , scale(get_scale(width, height))
 {
   assert(width > 0.);
   assert(height > 0.);
   assert(scale > 0.);
 
-  expect(layout.size() == plan.size(),
+  expect(!layout.empty(), "No agent goals given!");
+  expect(plan.empty() || layout.size() == plan.size(),
          "Size of agent goals and plan mismatch: "s
          + to_string(layout.size()) + " != " + to_string(plan.size()));
 
@@ -46,24 +47,32 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& ps)
   agents.reserve(n_agents);
   for (int i = 0; i < n_agents; ++i) {
     agent::Id aid = i;
+    assert(aid == int(agents.size()));
     auto& sid = layout.cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
+    agents.emplace_back(aid, 0.5, 1., start.cpos());
+
+    if (plan.empty()) continue;
+
     auto& first_step = plan.cat(aid).cfirst_step();
     assert(first_step.from_id == sid);
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
-    assert(aid == int(agents.size()));
-    agents.emplace_back(aid, 0.5, 1., make_pair(start.cpos(), next.cpos()));
+    auto& ag = agents.back();
     if (first_step.wait_time == 0) {
+      ag.set_v(next.cpos());
+      assert(!ag.idle());
       first_time_threshold = min(first_time_threshold, first_step.final_time());
-      assert(!agents.back().idle());
     }
     else {
-      agents.back().reset_v();
-      assert(agents.back().idle());
+      ag.reset_v();
+      assert(ag.idle());
       first_time_threshold = min(first_time_threshold, first_step.wait_abs_time());
     }
   }
+
+  if (plan.empty()) return;
+
   agents_step_idx.resize(n_agents);
 
   assert(first_time_threshold <= makespan);
@@ -114,6 +123,9 @@ void ofApp::setup()
 void ofApp::reset()
 {
   timestep_slider = 0;
+
+  if (plan.empty()) return;
+
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
@@ -132,6 +144,8 @@ void ofApp::reset()
 
 void ofApp::doStep(double step)
 {
+  if (plan.empty()) return;
+
   const double t = timestep_slider;
   const double t_next = t + step;
 
@@ -229,9 +243,10 @@ void ofApp::draw()
                            false);
   }
 
-  // draw graph
-  ofSetLineWidth(10);
   ofFill();
+
+  // draw edges
+  ofSetLineWidth(10);
   for (auto& vertex : graph.cvertices()) {
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
@@ -244,14 +259,6 @@ void ofApp::draw()
       ofSetColor(Color::edge);
       ofDrawLine(pos.x, pos.y, npos.x, npos.y);
     }
-
-    if (const agent::Id* aid_l; flg_goal && (aid_l = layout.find_agent_id_of_goal(vid))) {
-      set_agent_color(*aid_l);
-    }
-    else {
-      ofSetColor(Color::vertex);
-    }
-    ofDrawCircle(pos.x, pos.y, vertex_rad);
 
     if (flg_font) {
       ofSetColor(Color::font);
@@ -303,6 +310,20 @@ void ofApp::draw()
       font.drawString(std::to_string(i), x - font_size / 2, y + font_size / 2);
     }
     */
+  }
+
+  // draw vertices
+  for (auto& vertex : graph.cvertices()) {
+    auto& vid = vertex.cid();
+    const Coord pos = adjusted_pos_of(vertex);
+
+    if (const agent::Id* aid_l; flg_goal && (aid_l = layout.find_agent_id_of_goal(vid))) {
+      set_agent_color(*aid_l);
+    }
+    else {
+      ofSetColor(Color::vertex);
+    }
+    ofDrawCircle(pos.x, pos.y, vertex_rad);
   }
 
   if (flg_snapshot) {

@@ -29,7 +29,7 @@ struct ofApp : ofBaseApp {
 
   // flg
   bool flg_autoplay{true};
-  bool flg_loop{true};
+  bool flg_loop{false};
   bool flg_goal{true};
   bool flg_font{false};
   bool flg_snapshot{false};

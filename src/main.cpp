@@ -27,7 +27,10 @@ try {
   smt::solver::Z3 solver;
   solver.set_graph(g);
   solver.set_layout(layout);
-  agent::Plan plan = solver.solve(std::cout);
+  agent::Plan plan;
+  if (solver.solve(std::cout)) {
+    plan = solver.make_plan(std::cout);
+  }
 
   // visualize
   ofSetupOpenGL(100, 100, OF_WINDOW);
