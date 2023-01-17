@@ -16,9 +16,10 @@ struct ofApp : ofBaseApp {
 
   const agent::Plan& plan;
   Agents agents{};
-  const double makespan = plan.makespan();
-  double first_time_threshold{inf};
-  double time_threshold{inf};
+  const float makespan = plan.makespan();
+  static constexpr float t_inf = limits<float>::infinity();
+  float first_time_threshold{t_inf};
+  float time_threshold{t_inf};
   Vector<Idx> agents_step_idx{};
 
   // size
@@ -56,7 +57,7 @@ struct ofApp : ofBaseApp {
 
   void setup() override;
   void reset();
-  void doStep(double step);
+  void doStep(float step);
   void update() override;
   void draw() override;
 

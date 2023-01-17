@@ -8,7 +8,7 @@ static double get_scale(double width, double height)
 {
   auto window_max_w = default_screen_width - 2*screen_x_buffer - 2*window_x_buffer;
   auto window_max_h = default_screen_height - window_y_top_buffer - window_y_bottom_buffer;
-  return std::min(window_max_w/width, window_max_h/height) + 1;
+  return min(window_max_w/width, window_max_h/height) + 1;
 }
 
 static void printKeys()
@@ -62,13 +62,13 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
       ag.set_v(next.cpos());
       assert(!ag.idle());
-      first_time_threshold = min(first_time_threshold, first_step.final_time());
+      first_time_threshold = min<float>(first_time_threshold, first_step.final_time());
     }
     else {
       ag.reset_v();
       assert(ag.idle());
       if (first_step.wait_time > 0) {
-        first_time_threshold = min(first_time_threshold, first_step.wait_abs_time());
+        first_time_threshold = min<float>(first_time_threshold, first_step.wait_abs_time());
       }
     }
   }
@@ -144,12 +144,12 @@ void ofApp::reset()
   }
 }
 
-void ofApp::doStep(double step)
+void ofApp::doStep(float step)
 {
   if (plan.empty()) return;
 
-  const double t = timestep_slider;
-  const double t_next = t + step;
+  const float t = timestep_slider;
+  const float t_next = t + step;
 
   assert(t < time_threshold || apx_equal(t, makespan));
   assert(!(t_next < time_threshold && t_next > makespan));
@@ -175,7 +175,7 @@ void ofApp::doStep(double step)
   }
 
   timestep_slider = time_threshold;
-  const double step_to_threshold = time_threshold - t;
+  const float step_to_threshold = time_threshold - t;
   for (auto& ag : agents) {
     const bool idle = ag.idle();
     if (!idle) ag.advance(step_to_threshold);
@@ -185,7 +185,7 @@ void ofApp::doStep(double step)
     auto& steps = plan.cat(aid).csteps();
     if (curr_step_idx == steps.size()) continue;
     auto curr_step_l = &steps[curr_step_idx];
-    const double ag_time_threshold = idle ? curr_step_l->wait_abs_time() : curr_step_l->final_time();
+    const float ag_time_threshold = idle ? curr_step_l->wait_abs_time() : curr_step_l->final_time();
     if (time_threshold != ag_time_threshold) continue;
 
     auto& to = graph.cvertex(curr_step_l->to_id);
@@ -214,14 +214,16 @@ void ofApp::doStep(double step)
     }
   }
 
-  time_threshold = min(agents, [&](auto& ag) -> double {
+  time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
     auto& curr_step_idx = agents_step_idx[aid];
     auto& steps = plan.cat(aid).csteps();
-    if (curr_step_idx == steps.size()) return inf;
+    if (curr_step_idx == steps.size()) return t_inf;
     auto& curr_step = steps[curr_step_idx];
-    if (curr_step.from_id == curr_step.to_id) return inf;
-    return ag.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
+    if (curr_step.from_id == curr_step.to_id) return t_inf;
+    const float thres = ag.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
+    assert(thres > time_threshold);
+    return thres;
   });
 }
 
@@ -368,10 +370,10 @@ void ofApp::keyPressed(int key)
   case OF_KEY_LEFT:
     return doStep(-speed_slider);
   case OF_KEY_UP:
-    speed_slider = std::min(speed_slider + 0.01f, speed_slider.getMax());
+    speed_slider = min<float>(speed_slider + 0.01, speed_slider.getMax());
     return;
   case OF_KEY_DOWN:
-    speed_slider = std::max(speed_slider - 0.01f, speed_slider.getMin());
+    speed_slider = max<float>(speed_slider - 0.01, speed_slider.getMin());
     return;
   }
 }
