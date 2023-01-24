@@ -189,7 +189,7 @@ void ofApp::doStep(float step)
     if (time_threshold != ag_time_threshold) continue;
 
     auto& to = graph.cvertex(curr_step_l->to_id);
-    assert(idle || apx_equal(ag.cpos(), to.cpos(), huge_rel_eps, huge_abs_eps));
+    assert(idle || apx_equal<precision::Low>(ag.cpos(), to.cpos()));
     assert(!idle || ag.cpos() == graph.cvertex(curr_step_l->from_id).cpos());
 
     if (idle) {
