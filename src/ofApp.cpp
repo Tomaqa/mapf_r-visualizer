@@ -28,33 +28,40 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
+ofApp::ofApp(const Graph& g)
     : graph(g)
-    , layout(l)
-    , plan(p)
     , scale(get_scale(width, height))
 {
   assert(width > 0.);
   assert(height > 0.);
   assert(scale > 0.);
+}
 
-  expect(!layout.empty(), "No agent goals given!");
-  expect(plan.empty() || layout.size() == plan.size(),
+ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
+    : ofApp(g)
+{
+  layout_l = &l;
+  plan_l = &p;
+
+  expect(!layout().empty(), "No agent goals given!");
+  expect(plan().empty() || layout().size() == plan().size(),
          "Size of agent goals and plan mismatch: "s
-         + to_string(layout.size()) + " != " + to_string(plan.size()));
+         + to_string(layout().size()) + " != " + to_string(plan().size()));
 
-  const int n_agents = layout.size();
+  makespan = plan().makespan();
+
+  const int n_agents = layout().size();
   agents.reserve(n_agents);
   for (int i = 0; i < n_agents; ++i) {
     agent::Id aid = i;
     assert(aid == int(agents.size()));
-    auto& sid = layout.cstart_id_of(aid);
+    auto& sid = layout().cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
     agents.emplace_back(aid, 0.5, 1., start.cpos());
 
-    if (plan.empty()) continue;
+    if (plan().empty()) continue;
 
-    auto& first_step = plan.cat(aid).cfirst_step();
+    auto& first_step = plan().cat(aid).cfirst_step();
     assert(first_step.from_id == sid);
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
@@ -73,7 +80,7 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     }
   }
 
-  if (plan.empty()) return;
+  if (plan().empty()) return;
 
   agents_step_idx.resize(n_agents);
 
@@ -126,12 +133,12 @@ void ofApp::reset()
 {
   timestep_slider = 0;
 
-  if (plan.empty()) return;
+  if (!plan_l || plan().empty()) return;
 
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    auto& first_step = plan.cat(aid).cfirst_step();
+    auto& first_step = plan().cat(aid).cfirst_step();
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
       ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
       assert(!ag.idle());
@@ -146,7 +153,7 @@ void ofApp::reset()
 
 void ofApp::doStep(float step)
 {
-  if (plan.empty()) return;
+  if (!plan_l || plan().empty()) return;
 
   const float t = timestep_slider;
   const float t_next = t + step;
@@ -182,7 +189,7 @@ void ofApp::doStep(float step)
 
     auto& aid = ag.cid();
     auto& curr_step_idx = agents_step_idx[aid];
-    auto& steps = plan.cat(aid).csteps();
+    auto& steps = plan().cat(aid).csteps();
     if (curr_step_idx == steps.size()) continue;
     auto curr_step_l = &steps[curr_step_idx];
     const float ag_time_threshold = idle ? curr_step_l->wait_abs_time() : curr_step_l->final_time();
@@ -217,7 +224,7 @@ void ofApp::doStep(float step)
   time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
     auto& curr_step_idx = agents_step_idx[aid];
-    auto& steps = plan.cat(aid).csteps();
+    auto& steps = plan().cat(aid).csteps();
     if (curr_step_idx == steps.size()) return t_inf;
     auto& curr_step = steps[curr_step_idx];
     if (curr_step.from_id == curr_step.to_id) return t_inf;
@@ -323,7 +330,7 @@ void ofApp::draw()
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
 
-    if (const agent::Id* aid_l; flg_goal && (aid_l = layout.find_agent_id_of_goal(vid))) {
+    if (const agent::Id* aid_l; layout_l && flg_goal && (aid_l = layout().find_agent_id_of_goal(vid))) {
       set_agent_color(*aid_l);
     }
     else {

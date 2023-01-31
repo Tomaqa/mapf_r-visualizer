@@ -12,21 +12,23 @@ using namespace mapf_r;
 struct ofApp : ofBaseApp {
   const Graph& graph;
   const graph::Properties graph_prop{graph::make_properties(graph)};
-  const agent::Layout& layout;
-
-  const agent::Plan& plan;
-  Agents agents{};
-  const float makespan = plan.makespan();
-  static constexpr float t_inf = limits<float>::infinity();
-  float first_time_threshold{t_inf};
-  float time_threshold{t_inf};
-  Vector<Idx> agents_step_idx{};
 
   // size
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
   const double scale;
   const double vertex_rad = scale/8;
   const int font_size = max(int(scale/8), 6);
+
+  const agent::Layout* layout_l{};
+  const agent::Layout& layout() const noexcept { return *layout_l; }
+  const agent::Plan* plan_l{};
+  const agent::Plan& plan() const noexcept { return *plan_l; }
+  Agents agents{};
+  float makespan{};
+  static constexpr float t_inf = limits<float>::infinity();
+  float first_time_threshold{t_inf};
+  float time_threshold{t_inf};
+  Vector<Idx> agents_step_idx{};
 
   // flg
   bool flg_autoplay{true};
@@ -49,6 +51,7 @@ struct ofApp : ofBaseApp {
   // camera
   ofEasyCam cam;
 
+  ofApp(const Graph&);
   ofApp(const Graph&, const agent::Layout&, const agent::Plan&);
 
   Real adjusted_radius_of(const Agent&) const;
