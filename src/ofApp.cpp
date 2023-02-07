@@ -57,7 +57,7 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     assert(aid == int(agents.size()));
     auto& sid = layout().cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
-    agents.emplace_back(aid, 0.5, 1., start.cpos());
+    agents.emplace_back(aid, 0.5, 1., Agent::State(start.cpos()));
 
     if (plan().empty()) continue;
 
@@ -66,14 +66,15 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
     auto& ag = agents.back();
+    auto& st = ag.state();
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
-      ag.set_v(next.cpos());
-      assert(!ag.idle());
+      ag.set_state_v(next.cpos());
+      assert(!st.idle());
       first_time_threshold = min<float>(first_time_threshold, first_step.final_time());
     }
     else {
-      ag.reset_v();
-      assert(ag.idle());
+      st.set_idle();
+      assert(st.idle());
       if (first_step.wait_time > 0) {
         first_time_threshold = min<float>(first_time_threshold, first_step.wait_abs_time());
       }
@@ -138,13 +139,14 @@ void ofApp::reset()
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
+    auto& st = ag.state();
     auto& first_step = plan().cat(aid).cfirst_step();
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
-      ag.set(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
+      ag.set_state(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
       assert(!ag.idle());
     }
     else {
-      ag.reset_at_pos(graph.cvertex(first_step.from_id).cpos());
+      st.set_idle_at(graph.cvertex(first_step.from_id).cpos());
       assert(ag.idle());
     }
     agents_step_idx[aid] = 0;
@@ -176,7 +178,8 @@ void ofApp::doStep(float step)
     timestep_slider = t_next;
 
     for (auto& ag : agents) {
-      ag.advance(step);
+      auto& st = ag.state();
+      st.advance(step);
     }
     return;
   }
@@ -184,8 +187,9 @@ void ofApp::doStep(float step)
   timestep_slider = time_threshold;
   const float step_to_threshold = time_threshold - t;
   for (auto& ag : agents) {
-    const bool idle = ag.idle();
-    if (!idle) ag.advance(step_to_threshold);
+    auto& st = ag.state();
+    const bool idle = st.idle();
+    if (!idle) st.advance(step_to_threshold);
 
     auto& aid = ag.cid();
     auto& curr_step_idx = agents_step_idx[aid];
@@ -201,12 +205,12 @@ void ofApp::doStep(float step)
 
     if (idle) {
       assert(curr_step_l->from_id != to.cid());
-      ag.set_v(to.cpos());
+      ag.set_state_v(to.cpos());
       continue;
     }
 
     if (++curr_step_idx == steps.size()) {
-      ag.reset_v();
+      st.set_idle();
       continue;
     }
 
@@ -214,21 +218,22 @@ void ofApp::doStep(float step)
     assert(curr_step_l->from_id == to.cid());
     if (curr_step_l->wait_time == 0 && curr_step_l->move_time > 0) {
       auto& new_to = graph.cvertex(curr_step_l->to_id);
-      ag.set(to.cpos(), new_to.cpos());
+      ag.set_state(to.cpos(), new_to.cpos());
     }
     else {
-      ag.reset_at_pos(to.cpos());
+      st.set_idle_at(to.cpos());
     }
   }
 
   time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
+    auto& st = ag.cstate();
     auto& curr_step_idx = agents_step_idx[aid];
     auto& steps = plan().cat(aid).csteps();
     if (curr_step_idx == steps.size()) return t_inf;
     auto& curr_step = steps[curr_step_idx];
     if (curr_step.from_id == curr_step.to_id) return t_inf;
-    const float thres = ag.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
+    const float thres = st.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
     assert(thres > time_threshold);
     return thres;
   });
@@ -282,7 +287,8 @@ void ofApp::draw()
   // draw agents
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    const Coord pos = adjusted_pos_of(ag);
+    auto& st = ag.cstate();
+    const Coord pos = adjusted_pos_of(st);
     set_agent_color(aid);
     ofDrawCircle(pos.x, pos.y, adjusted_radius_of(ag));
 
