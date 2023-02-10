@@ -66,15 +66,12 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     auto& next_id = first_step.to_id;
     auto& next = graph.cvertex(next_id);
     auto& ag = agents.back();
-    auto& st = ag.state();
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
-      ag.set_state_v(next.cpos());
-      assert(!st.idle());
+      ag.set_state_end_pos(next.cpos());
       first_time_threshold = min<float>(first_time_threshold, first_step.final_time());
     }
     else {
-      st.set_idle();
-      assert(st.idle());
+      ag.set_idle();
       if (first_step.wait_time > 0) {
         first_time_threshold = min<float>(first_time_threshold, first_step.wait_abs_time());
       }
@@ -139,14 +136,13 @@ void ofApp::reset()
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    auto& st = ag.state();
     auto& first_step = plan().cat(aid).cfirst_step();
     if (first_step.wait_time == 0 && first_step.move_time > 0) {
       ag.set_state(graph.cvertex(first_step.from_id).cpos(), graph.cvertex(first_step.to_id).cpos());
       assert(!ag.idle());
     }
     else {
-      st.set_idle_at(graph.cvertex(first_step.from_id).cpos());
+      ag.set_idle_at(graph.cvertex(first_step.from_id).cpos());
       assert(ag.idle());
     }
     agents_step_idx[aid] = 0;
@@ -187,8 +183,8 @@ void ofApp::doStep(float step)
   timestep_slider = time_threshold;
   const float step_to_threshold = time_threshold - t;
   for (auto& ag : agents) {
+    const bool idle = ag.idle();
     auto& st = ag.state();
-    const bool idle = st.idle();
     if (!idle) st.advance(step_to_threshold);
 
     auto& aid = ag.cid();
@@ -205,12 +201,12 @@ void ofApp::doStep(float step)
 
     if (idle) {
       assert(curr_step_l->from_id != to.cid());
-      ag.set_state_v(to.cpos());
+      ag.set_state_end_pos(to.cpos());
       continue;
     }
 
     if (++curr_step_idx == steps.size()) {
-      st.set_idle();
+      ag.set_idle();
       continue;
     }
 
@@ -221,19 +217,18 @@ void ofApp::doStep(float step)
       ag.set_state(to.cpos(), new_to.cpos());
     }
     else {
-      st.set_idle_at(to.cpos());
+      ag.set_idle_at(to.cpos());
     }
   }
 
   time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
-    auto& st = ag.cstate();
     auto& curr_step_idx = agents_step_idx[aid];
     auto& steps = plan().cat(aid).csteps();
     if (curr_step_idx == steps.size()) return t_inf;
     auto& curr_step = steps[curr_step_idx];
     if (curr_step.from_id == curr_step.to_id) return t_inf;
-    const float thres = st.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
+    const float thres = ag.idle() ? curr_step.wait_abs_time() : curr_step.final_time();
     assert(thres > time_threshold);
     return thres;
   });
