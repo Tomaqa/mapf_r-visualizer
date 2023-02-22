@@ -17,6 +17,7 @@ struct ofApp : ofBaseApp {
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
   const double scale;
   const double vertex_rad = scale/8;
+  const double line_width = vertex_rad/2;
   const int font_size = max(int(scale/8), 6);
 
   const agent::Layout* layout_l{};
@@ -24,11 +25,12 @@ struct ofApp : ofBaseApp {
   const agent::Plan* plan_l{};
   const agent::Plan& plan() const noexcept { return *plan_l; }
   Agents agents{};
+  Vector<agent::States> all_states{};
   float makespan{};
   static constexpr float t_inf = limits<float>::infinity();
   float first_time_threshold{t_inf};
   float time_threshold{t_inf};
-  Vector<Idx> agents_step_idx{};
+  Vector<Idx> agents_action_idx{};
 
   // flg
   bool flg_autoplay{true};
@@ -54,8 +56,9 @@ struct ofApp : ofBaseApp {
   ofApp(const Graph&);
   ofApp(const Graph&, const agent::Layout&, const agent::Plan&);
 
-  Real adjusted_radius_of(const Agent&) const;
-  template <typename T>
+  template <typename  T>
+  T scaled(const T&) const;
+  template <typename  T>
   Coord adjusted_pos_of(const T&) const;
 
   void setup() override;
