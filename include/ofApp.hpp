@@ -22,10 +22,9 @@ struct ofApp : ofBaseApp {
 
   const agent::Layout* layout_l{};
   const agent::Layout& layout() const noexcept { return *layout_l; }
-  const agent::Plan* plan_l{};
-  const agent::Plan& plan() const noexcept { return *plan_l; }
+  const agent::Plan plan{};
+  agent::States_plan states_plan{};
   Agents agents{};
-  Vector<agent::States> all_states{};
   float makespan{};
   static constexpr float t_inf = limits<float>::infinity();
   float first_time_threshold{t_inf};
@@ -53,8 +52,12 @@ struct ofApp : ofBaseApp {
   // camera
   ofEasyCam cam;
 
+  ofApp(const Graph&, agent::Plan, agent::States_plan);
   ofApp(const Graph&);
-  ofApp(const Graph&, const agent::Layout&, const agent::Plan&);
+  ofApp(const Graph&, agent::States_plan);
+  ofApp(const Graph&, const agent::Layout&, agent::Plan);
+
+  void init();
 
   template <typename  T>
   T scaled(const T&) const;

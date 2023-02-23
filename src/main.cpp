@@ -6,13 +6,19 @@
 
 #include "mapf_r/smt/solver/z3.hpp"
 
+#include "tomaqa.hpp"
+
 int main(int argc, char *argv[])
 try {
+  using namespace tomaqa;
+  using namespace std;
+
   // simple arguments check
   if (argc < 2 || argc > 3) {
-    std::cout << "Usage: bin/mapf_r-visualizer <graph> [<layout>], e.g.\n"
-              << "bin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l"
-              << std::endl;
+    cout << "Usage: bin/mapf_r-visualizer <graph> [<plan> | <layout>], e.g."
+         << "\nbin/mapf_r-visualizer data/graph/sample.g data/plan/sample.stp"
+         << "\nbin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l"
+         << endl;
     return 0;
   }
 
@@ -28,7 +34,15 @@ try {
     return 0;
   }
 
-  ifstream l_ifs(argv[2]);
+  const Path path2 = argv[2];
+  if (contains({".stp", ".sp"}, path2.extension())) {
+    ifstream st_ifs(path2);
+    agent::States_plan stplan(st_ifs);
+    ofRunApp(new ofApp(g, move(stplan)));
+    return 0;
+  }
+
+  ifstream l_ifs(path2);
   expect(l_ifs, "Layout file not readable: "s + argv[2]);
   agent::Layout layout(l_ifs);
 
@@ -36,12 +50,12 @@ try {
   solver.set_graph(g);
   solver.set_layout(layout);
   agent::Plan plan;
-  if (solver.solve(std::cout)) {
-    plan = solver.make_plan(std::cout);
+  if (solver.solve(cout)) {
+    plan = solver.make_plan(cout);
   }
 
   // visualize
-  ofRunApp(new ofApp(g, layout, plan));
+  ofRunApp(new ofApp(g, layout, move(plan)));
   return 0;
 }
 catch (const Error& err) {

@@ -28,8 +28,10 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(const Graph& g)
+ofApp::ofApp(const Graph& g, agent::Plan p, agent::States_plan sp)
     : graph(g)
+    , plan(move(p))
+    , states_plan(move(sp))
     , scale(get_scale(width, height))
 {
   assert(width > 0.);
@@ -37,22 +39,43 @@ ofApp::ofApp(const Graph& g)
   assert(scale > 0.);
 }
 
-ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
-    : ofApp(g)
+ofApp::ofApp(const Graph& g)
+    : ofApp(g, agent::Plan(), agent::States_plan())
+{ }
+
+ofApp::ofApp(const Graph& g, agent::States_plan sp)
+    : ofApp(g, agent::Plan(), move(sp))
+{
+  makespan = states_plan.makespan();
+
+  assert(!states_plan.empty());
+  const int n_agents = states_plan.size();
+  agents.reserve(n_agents);
+  for (int i = 0; i < n_agents; ++i) {
+    agent::Id aid = i;
+    assert(aid == int(agents.size()));
+    auto& states = states_plan.cat(aid);
+    auto& first_state = states.front();
+    agents.emplace_back(aid, 0.5, 1., first_state.cpos());
+  }
+
+  init();
+}
+
+ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::Plan p)
+    : ofApp(g, move(p), agent::States_plan())
 {
   layout_l = &l;
-  plan_l = &p;
 
   expect(!layout().empty(), "No agent goals given!");
-  expect(plan().empty() || layout().size() == plan().size(),
+  expect(plan.empty() || layout().size() == plan.size(),
          "Size of agent goals and plan mismatch: "s
-         + to_string(layout().size()) + " != " + to_string(plan().size()));
+         + to_string(layout().size()) + " != " + to_string(plan.size()));
 
-  makespan = plan().makespan();
+  makespan = plan.makespan();
 
   const int n_agents = layout().size();
   agents.reserve(n_agents);
-  all_states.reserve(n_agents);
   for (int i = 0; i < n_agents; ++i) {
     agent::Id aid = i;
     assert(aid == int(agents.size()));
@@ -60,15 +83,32 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     auto& start = graph.cvertex(sid);
     agents.emplace_back(aid, 0.5, 1., start.cpos());
 
-    if (plan().empty()) continue;
+    if (plan.empty()) continue;
 
-    auto& splan = plan().cat(aid);
-    all_states.push_back(make_states(splan, graph));
-    auto& states = all_states.back();
+    auto& splan = plan.cat(aid);
+    const auto [it, inserted] = states_plan.emplace(aid, make_states(splan, graph));
+    assert(inserted);
+    auto& states = it->second;
     assert(!splan.empty());
     assert(!states.empty());
+  }
 
-    auto& ag = agents.back();
+  init();
+}
+
+void ofApp::init()
+{
+  assert(plan.empty() || plan.size() == agents.size());
+
+  if (states_plan.empty()) return;
+
+  assert(states_plan.size() == agents.size());
+
+  std::cout << states_plan << std::endl;
+
+  for (auto& ag : agents) {
+    auto& aid = ag.cid();
+    auto& states = states_plan.cat(aid);
     auto& st = ag.state();
     st = states.front();
     assert(st == states.front());
@@ -76,9 +116,7 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, const agent::Plan& p)
     first_time_threshold = min<float>(first_time_threshold, st.dt());
   }
 
-  if (plan().empty()) return;
-
-  agents_action_idx.resize(n_agents);
+  agents_action_idx.resize(agents.size());
 
   assert(first_time_threshold <= makespan);
   time_threshold = first_time_threshold;
@@ -130,19 +168,19 @@ void ofApp::reset()
 {
   timestep_slider = 0;
 
-  if (!plan_l || plan().empty()) return;
+  if (states_plan.empty()) return;
 
   time_threshold = first_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
-    ag.state() = all_states[aid].front();
+    ag.state() = states_plan.cat(aid).front();
     agents_action_idx[aid] = 0;
   }
 }
 
 void ofApp::doStep(float step)
 {
-  if (!plan_l || plan().empty()) return;
+  if (states_plan.empty()) return;
 
   const float t = timestep_slider;
   const float t_next = t + step;
@@ -179,14 +217,13 @@ void ofApp::doStep(float step)
     st.advance(step_to_threshold);
 
     auto& curr_action_idx = agents_action_idx[aid];
-    const auto& states = all_states[aid];
+    const auto& states = states_plan.cat(aid);
     if (curr_action_idx == states.size()) continue;
-    //- assert(st.cend_pos() == states[curr_action_idx].cend_pos());
+    assert(st.cend_pos() == states[curr_action_idx].cend_pos());
     assert(st.cduration() == states[curr_action_idx].cduration());
     if (apx_greater(st.dt(), 0)) continue;
 
-    //- const auto to_pos = st.cend_pos();
-    const auto to_pos = states[curr_action_idx].cend_pos();
+    const auto to_pos = st.cend_pos();
     assert(apx_equal<precision::Low>(st.cpos(), to_pos));
 
     if (++curr_action_idx == states.size()) {
@@ -203,7 +240,7 @@ void ofApp::doStep(float step)
   time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
     auto& curr_action_idx = agents_action_idx[aid];
-    const auto& states = all_states[aid];
+    const auto& states = states_plan.cat(aid);
     if (curr_action_idx == states.size()) return t_inf;
     const float thres = time_threshold + ag.cstate().dt();
     assert(thres > time_threshold);
