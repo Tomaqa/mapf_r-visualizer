@@ -43,6 +43,26 @@ ofApp::ofApp(const Graph& g)
     : ofApp(g, agent::plan::Global(), agent::plan::Global_states())
 { }
 
+ofApp::ofApp(const Graph& g, agent::plan::Global p)
+    : ofApp(g, move(p), agent::plan::Global_states())
+{
+  states_plan = {plan, graph};
+
+  makespan = plan.makespan();
+
+  const int n_agents = plan.size();
+  agents.reserve(n_agents);
+  for (int i = 0; i < n_agents; ++i) {
+    agent::Id aid = i;
+    assert(aid == int(agents.size()));
+    auto& sid = plan.cstart_id_of(aid);
+    auto& start = graph.cvertex(sid);
+    agents.emplace_back(aid, 0.5, 1., start.cpos());
+  }
+
+  init();
+}
+
 ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
     : ofApp(g, agent::plan::Global(), move(sp))
 {
@@ -62,33 +82,6 @@ ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
   init();
 }
 
-ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::plan::Global p)
-    : ofApp(g, move(p), agent::plan::Global_states())
-{
-  layout_l = &l;
-
-  expect(!layout().empty(), "No agent goals given!");
-  expect(plan.empty() || layout().size() == plan.size(),
-         "Size of agent goals and plan mismatch: "s
-         + to_string(layout().size()) + " != " + to_string(plan.size()));
-
-  states_plan = {plan, graph};
-
-  makespan = plan.makespan();
-
-  const int n_agents = layout().size();
-  agents.reserve(n_agents);
-  for (int i = 0; i < n_agents; ++i) {
-    agent::Id aid = i;
-    assert(aid == int(agents.size()));
-    auto& sid = layout().cstart_id_of(aid);
-    auto& start = graph.cvertex(sid);
-    agents.emplace_back(aid, 0.5, 1., start.cpos());
-  }
-
-  init();
-}
-
 void ofApp::init()
 {
   assert(plan.empty() || plan.size() == agents.size());
@@ -96,6 +89,12 @@ void ofApp::init()
   if (states_plan.empty()) return;
 
   assert(states_plan.size() == agents.size());
+
+  for (auto& [aid, splan] : states_plan) {
+    auto& s = splan.back();
+    assert(s.cduration() > 0 || s.idle());
+    if (s.cduration() == 0) s.get_idle().duration() = inf;
+  }
 
   std::cout << states_plan << std::endl;
 
@@ -106,6 +105,7 @@ void ofApp::init()
     st = states.front();
     assert(st == states.front());
     assert(st.dt() == st.cduration());
+    assert(st.cduration() > 0);
     first_time_threshold = min<float>(first_time_threshold, st.dt());
   }
 
@@ -341,7 +341,8 @@ void ofApp::draw()
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
 
-    if (const agent::Id* aid_l; layout_l && flg_goal && (aid_l = layout().find_agent_id_of_goal(vid))) {
+    //+ support also with states_plan only
+    if (const agent::Id* aid_l; flg_goal && (aid_l = plan.find_agent_id_of_goal(vid))) {
       set_agent_color(*aid_l);
     }
     else {

@@ -42,20 +42,28 @@ try {
     return 0;
   }
 
-  ifstream l_ifs(path2);
-  expect(l_ifs, "Layout file not readable: "s + argv[2]);
-  agent::Layout layout(l_ifs);
-
-  smt::solver::Z3 solver;
-  solver.set_graph(g);
-  solver.set_layout(layout);
   agent::plan::Global plan;
-  if (solver.solve(cout)) {
-    plan = solver.make_plan(cout);
+  if (contains({".p"}, path2.extension())) {
+    ifstream p_ifs(path2);
+    expect(p_ifs, "Plan file not readable: "s + path2.to_string());
+    plan = {p_ifs};
+  }
+  else {
+    ifstream l_ifs(path2);
+    expect(l_ifs, "Layout file not readable: "s + path2.to_string());
+    agent::Layout layout(l_ifs);
+
+    smt::solver::Z3 solver;
+    solver.set_graph(g);
+    solver.set_layout(layout);
+
+    if (solver.solve(cout)) {
+      plan = solver.make_plan(cout);
+    }
   }
 
   // visualize
-  ofRunApp(new ofApp(g, layout, move(plan)));
+  ofRunApp(new ofApp(g, move(plan)));
   return 0;
 }
 catch (const Error& err) {

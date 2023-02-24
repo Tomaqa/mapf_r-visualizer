@@ -2,7 +2,6 @@
 
 #include "mapf_r/graph.hpp"
 #include "mapf_r/graph/alg.hpp"
-#include "mapf_r/agent/layout.hpp"
 #include "mapf_r/agent/plan.hpp"
 
 #include "ofMain.h"
@@ -21,8 +20,6 @@ struct ofApp : ofBaseApp {
   const double line_width = vertex_rad/2;
   const int font_size = max(int(scale/8), 6);
 
-  const agent::Layout* layout_l{};
-  const agent::Layout& layout() const noexcept { return *layout_l; }
   const agent::plan::Global plan{};
   agent::plan::Global_states states_plan{};
   Agents agents{};
@@ -55,8 +52,8 @@ struct ofApp : ofBaseApp {
 
   ofApp(const Graph&, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&);
+  ofApp(const Graph&, agent::plan::Global);
   ofApp(const Graph&, agent::plan::Global_states);
-  ofApp(const Graph&, const agent::Layout&, agent::plan::Global);
 
   void init();
 
