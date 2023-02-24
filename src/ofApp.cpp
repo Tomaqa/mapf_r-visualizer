@@ -28,11 +28,11 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(const Graph& g, agent::Plan p, agent::States_plan sp)
+ofApp::ofApp(const Graph& g, agent::plan::Global p, agent::plan::Global_states sp)
     : graph(g)
+    , scale(get_scale(width, height))
     , plan(move(p))
     , states_plan(move(sp))
-    , scale(get_scale(width, height))
 {
   assert(width > 0.);
   assert(height > 0.);
@@ -40,11 +40,11 @@ ofApp::ofApp(const Graph& g, agent::Plan p, agent::States_plan sp)
 }
 
 ofApp::ofApp(const Graph& g)
-    : ofApp(g, agent::Plan(), agent::States_plan())
+    : ofApp(g, agent::plan::Global(), agent::plan::Global_states())
 { }
 
-ofApp::ofApp(const Graph& g, agent::States_plan sp)
-    : ofApp(g, agent::Plan(), move(sp))
+ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
+    : ofApp(g, agent::plan::Global(), move(sp))
 {
   makespan = states_plan.makespan();
 
@@ -62,8 +62,8 @@ ofApp::ofApp(const Graph& g, agent::States_plan sp)
   init();
 }
 
-ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::Plan p)
-    : ofApp(g, move(p), agent::States_plan())
+ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::plan::Global p)
+    : ofApp(g, move(p), agent::plan::Global_states())
 {
   layout_l = &l;
 
@@ -71,6 +71,8 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::Plan p)
   expect(plan.empty() || layout().size() == plan.size(),
          "Size of agent goals and plan mismatch: "s
          + to_string(layout().size()) + " != " + to_string(plan.size()));
+
+  states_plan = {plan, graph};
 
   makespan = plan.makespan();
 
@@ -82,15 +84,6 @@ ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::Plan p)
     auto& sid = layout().cstart_id_of(aid);
     auto& start = graph.cvertex(sid);
     agents.emplace_back(aid, 0.5, 1., start.cpos());
-
-    if (plan.empty()) continue;
-
-    auto& splan = plan.cat(aid);
-    const auto [it, inserted] = states_plan.emplace(aid, make_states(splan, graph));
-    assert(inserted);
-    auto& states = it->second;
-    assert(!splan.empty());
-    assert(!states.empty());
   }
 
   init();
@@ -192,29 +185,32 @@ void ofApp::doStep(float step)
     return reset();
   }
 
-  if (t_next > makespan) {
+  const bool finish = t_next > makespan;
+  const bool transition = !finish && t_next >= time_threshold;
+  if (finish) {
+    assert(t_next >= time_threshold);
     if (flg_loop) return reset();
 
     timestep_slider = makespan;
-    return;
+    step = makespan - t;
   }
-
-  if (t_next < time_threshold) {
+  else if (!transition) {
     timestep_slider = t_next;
-
-    for (auto& ag : agents) {
-      auto& st = ag.state();
-      st.advance(step);
-    }
-    return;
+  }
+  else {
+    timestep_slider = time_threshold;
+    step = time_threshold - t;
   }
 
-  timestep_slider = time_threshold;
-  const float step_to_threshold = time_threshold - t;
+  for (auto& ag : agents) {
+    ag.state().advance(step);
+  }
+
+  if (!transition) return;
+
   for (auto& ag : agents) {
     auto& aid = ag.cid();
     auto& st = ag.state();
-    st.advance(step_to_threshold);
 
     auto& curr_action_idx = agents_action_idx[aid];
     const auto& states = states_plan.cat(aid);

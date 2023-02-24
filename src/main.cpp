@@ -37,7 +37,7 @@ try {
   const Path path2 = argv[2];
   if (contains({".stp", ".sp"}, path2.extension())) {
     ifstream st_ifs(path2);
-    agent::States_plan stplan(st_ifs);
+    agent::plan::Global_states stplan(st_ifs);
     ofRunApp(new ofApp(g, move(stplan)));
     return 0;
   }
@@ -49,7 +49,7 @@ try {
   smt::solver::Z3 solver;
   solver.set_graph(g);
   solver.set_layout(layout);
-  agent::Plan plan;
+  agent::plan::Global plan;
   if (solver.solve(cout)) {
     plan = solver.make_plan(cout);
   }

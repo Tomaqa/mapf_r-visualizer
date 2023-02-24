@@ -2,6 +2,7 @@
 
 #include "mapf_r/graph.hpp"
 #include "mapf_r/graph/alg.hpp"
+#include "mapf_r/agent/layout.hpp"
 #include "mapf_r/agent/plan.hpp"
 
 #include "ofMain.h"
@@ -22,8 +23,8 @@ struct ofApp : ofBaseApp {
 
   const agent::Layout* layout_l{};
   const agent::Layout& layout() const noexcept { return *layout_l; }
-  const agent::Plan plan{};
-  agent::States_plan states_plan{};
+  const agent::plan::Global plan{};
+  agent::plan::Global_states states_plan{};
   Agents agents{};
   float makespan{};
   static constexpr float t_inf = limits<float>::infinity();
@@ -52,10 +53,10 @@ struct ofApp : ofBaseApp {
   // camera
   ofEasyCam cam;
 
-  ofApp(const Graph&, agent::Plan, agent::States_plan);
+  ofApp(const Graph&, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&);
-  ofApp(const Graph&, agent::States_plan);
-  ofApp(const Graph&, const agent::Layout&, agent::Plan);
+  ofApp(const Graph&, agent::plan::Global_states);
+  ofApp(const Graph&, const agent::Layout&, agent::plan::Global);
 
   void init();
 
