@@ -93,7 +93,7 @@ void ofApp::init()
   for (auto& [aid, splan] : states_plan) {
     auto& s = splan.back();
     assert(s.cduration() > 0 || s.idle());
-    if (s.cduration() == 0) s.get_idle().duration() = inf;
+    if (s.cduration() == 0) s.get_idle().set_duration(inf);
   }
 
   std::cout << states_plan << std::endl;
