@@ -16,41 +16,59 @@ try {
   // simple arguments check
   if (argc < 2 || argc > 3) {
     cout << "Usage: bin/mapf_r-visualizer <graph> [<plan> | <layout>], e.g."
-         << "\nbin/mapf_r-visualizer data/graph/sample.g data/plan/sample.stp"
+         << "\nbin/mapf_r-visualizer data/graph/sample.g data/plan/sample.p"
          << "\nbin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l"
          << endl;
     return 0;
   }
 
-  // load graph
-  ifstream g_ifs(argv[1]);
-  expect(g_ifs, "Graph file not readable: "s + argv[1]);
-  Graph g(g_ifs);
-
   ofSetupOpenGL(100, 100, OF_WINDOW);
 
+  Path path = argv[1];
+
+  Graph g;
+  if (argc > 2 || contains({".g"}, path.extension())) {
+    // load graph
+    ifstream g_ifs(path);
+    expect(g_ifs, "Graph file not readable: "s + path.to_string());
+    g = {g_ifs};
+    assert(!g.cvertices().empty());
+  }
+
   if (argc == 2) {
-    ofRunApp(new ofApp(g));
+    // graph only
+    if (!g.cvertices().empty()) {
+      ofRunApp(new ofApp(g));
+      return 0;
+    }
+
+    // plan only
+    ifstream p_ifs(path);
+    expect(p_ifs, "Plan file not readable: "s + path.to_string());
+    // only `Global_states`, `Global` requires graph
+    ofRunApp(new ofApp(agent::plan::Global_states(p_ifs)));
     return 0;
   }
 
-  const Path path2 = argv[2];
-  if (contains({".stp", ".sp"}, path2.extension())) {
-    ifstream st_ifs(path2);
+  assert(!g.cvertices().empty());
+  path = argv[2];
+  if (contains({".stp", ".sp"}, path.extension())) {
+    // load plan
+    ifstream st_ifs(path);
     agent::plan::Global_states stplan(st_ifs);
     ofRunApp(new ofApp(g, move(stplan)));
     return 0;
   }
 
   agent::plan::Global plan;
-  if (contains({".p"}, path2.extension())) {
-    ifstream p_ifs(path2);
-    expect(p_ifs, "Plan file not readable: "s + path2.to_string());
+  if (contains({".p"}, path.extension())) {
+    ifstream p_ifs(path);
+    expect(p_ifs, "Plan file not readable: "s + path.to_string());
     plan = {p_ifs};
   }
   else {
-    ifstream l_ifs(path2);
-    expect(l_ifs, "Layout file not readable: "s + path2.to_string());
+    ifstream l_ifs(path);
+    expect(l_ifs, "Layout file not readable: "s + path.to_string());
     agent::Layout layout(l_ifs);
 
     smt::solver::Z3 solver;

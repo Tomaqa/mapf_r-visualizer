@@ -4,6 +4,8 @@
 
 #include "../include/param.hpp"
 
+#include "mapf_r/agent/plan/alg.hpp"
+
 static double get_scale(double width, double height)
 {
   auto window_max_w = default_screen_width - 2*screen_x_buffer - 2*window_x_buffer;
@@ -28,8 +30,9 @@ static void printKeys()
   std::cout << "- esc : terminate" << std::endl;
 }
 
-ofApp::ofApp(const Graph& g, agent::plan::Global p, agent::plan::Global_states sp)
-    : graph(g)
+ofApp::ofApp(const Graph* gl, graph::Properties g_prop, agent::plan::Global p, agent::plan::Global_states sp)
+    : graph_l(gl)
+    , graph_prop(move(g_prop))
     , scale(get_scale(width, height))
     , plan(move(p))
     , states_plan(move(sp))
@@ -39,6 +42,10 @@ ofApp::ofApp(const Graph& g, agent::plan::Global p, agent::plan::Global_states s
   assert(scale > 0.);
 }
 
+ofApp::ofApp(const Graph& g, agent::plan::Global p, agent::plan::Global_states sp)
+    : ofApp(&g, graph::make_properties(g), move(p), move(sp))
+{ }
+
 ofApp::ofApp(const Graph& g)
     : ofApp(g, agent::plan::Global(), agent::plan::Global_states())
 { }
@@ -46,7 +53,7 @@ ofApp::ofApp(const Graph& g)
 ofApp::ofApp(const Graph& g, agent::plan::Global p)
     : ofApp(g, move(p), agent::plan::Global_states())
 {
-  states_plan = {plan, graph};
+  states_plan = {plan, graph()};
 
   makespan = plan.makespan();
 
@@ -56,15 +63,15 @@ ofApp::ofApp(const Graph& g, agent::plan::Global p)
     agent::Id aid = i;
     assert(aid == int(agents.size()));
     auto& sid = plan.cstart_id_of(aid);
-    auto& start = graph.cvertex(sid);
+    auto& start = graph().cvertex(sid);
     agents.emplace_back(aid, 0.5, 1., start.cpos());
   }
 
   init();
 }
 
-ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
-    : ofApp(g, agent::plan::Global(), move(sp))
+ofApp::ofApp(const Graph* gl, graph::Properties g_prop, agent::plan::Global_states sp)
+    : ofApp(gl, move(g_prop), agent::plan::Global(), move(sp))
 {
   makespan = states_plan.makespan();
 
@@ -81,6 +88,14 @@ ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
 
   init();
 }
+
+ofApp::ofApp(const Graph& g, agent::plan::Global_states sp)
+    : ofApp(&g, graph::make_properties(g), move(sp))
+{ }
+
+ofApp::ofApp(agent::plan::Global_states sp)
+    : ofApp(nullptr, graph::make_properties(sp), sp)
+{ }
 
 void ofApp::init()
 {
@@ -179,7 +194,6 @@ void ofApp::doStep(float step)
   const float t_next = t + step;
 
   assert(t < time_threshold || apx_equal(t, makespan));
-  assert(!(t_next < time_threshold && t_next > makespan));
 
   if (t_next < 0) {
     return reset();
@@ -242,6 +256,11 @@ void ofApp::doStep(float step)
     assert(thres > time_threshold);
     return thres;
   });
+
+  if (time_threshold > makespan) {
+    assert(apx_equal<precision::Low>(time_threshold, makespan) || time_threshold == t_inf);
+    time_threshold = makespan;
+  }
 }
 
 void ofApp::update()
@@ -270,14 +289,15 @@ void ofApp::draw()
 
   // draw edges
   ofSetLineWidth(line_width);
-  for (auto& vertex : graph.cvertices()) {
+  if (graph_l)
+  for (auto& vertex : graph().cvertices()) {
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
 
     for (auto& nid : vertex.cneighbor_ids()) {
       assert(nid != vid);
       if (vid > nid) continue;
-      auto& neighbor = graph.cvertex(nid);
+      auto& neighbor = graph().cvertex(nid);
       const Coord npos = adjusted_pos_of(neighbor);
       ofSetColor(Color::edge);
       ofDrawLine(pos.x, pos.y, npos.x, npos.y);
@@ -337,7 +357,8 @@ void ofApp::draw()
   }
 
   // draw vertices
-  for (auto& vertex : graph.cvertices()) {
+  if (graph_l)
+  for (auto& vertex : graph().cvertices()) {
     auto& vid = vertex.cid();
     const Coord pos = adjusted_pos_of(vertex);
 

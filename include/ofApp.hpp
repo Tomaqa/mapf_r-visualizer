@@ -10,8 +10,9 @@
 using namespace mapf_r;
 
 struct ofApp : ofBaseApp {
-  const Graph& graph;
-  const graph::Properties graph_prop{graph::make_properties(graph)};
+  const Graph* graph_l;
+  const Graph& graph() const { assert(graph_l); return *graph_l; }
+  graph::Properties graph_prop;
 
   // size
   const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
@@ -20,8 +21,8 @@ struct ofApp : ofBaseApp {
   const double line_width = vertex_rad/2;
   const int font_size = max(int(scale/8), 6);
 
-  const agent::plan::Global plan{};
-  agent::plan::Global_states states_plan{};
+  const agent::plan::Global plan;
+  agent::plan::Global_states states_plan;
   Agents agents{};
   float makespan{};
   static constexpr float t_inf = limits<float>::infinity();
@@ -50,10 +51,13 @@ struct ofApp : ofBaseApp {
   // camera
   ofEasyCam cam;
 
+  ofApp(const Graph*, graph::Properties, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&);
   ofApp(const Graph&, agent::plan::Global);
+  ofApp(const Graph*, graph::Properties, agent::plan::Global_states);
   ofApp(const Graph&, agent::plan::Global_states);
+  ofApp(agent::plan::Global_states);
 
   void init();
 
