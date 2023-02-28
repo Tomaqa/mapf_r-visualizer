@@ -64,6 +64,7 @@ ofApp::ofApp(const Graph& g, agent::plan::Global p)
     assert(aid == int(agents.size()));
     auto& sid = plan.cstart_id_of(aid);
     auto& start = graph().cvertex(sid);
+    //++ parametrize
     agents.emplace_back(aid, 0.5, 1., start.cpos());
   }
 
@@ -82,8 +83,10 @@ ofApp::ofApp(const Graph* gl, graph::Properties g_prop, agent::plan::Global_stat
     agent::Id aid = i;
     assert(aid == int(agents.size()));
     auto& states = states_plan.cat(aid);
+    const auto radius = states.radius;
+    const auto abs_v = states.abs_v;
     auto& first_state = states.front();
-    agents.emplace_back(aid, 0.5, 1., first_state.cpos());
+    agents.emplace_back(aid, radius, abs_v, first_state.cpos());
   }
 
   init();
