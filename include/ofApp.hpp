@@ -31,7 +31,7 @@ struct ofApp : ofBaseApp {
   Vector<Idx> agents_action_idx{};
 
   // flg
-  bool flg_autoplay{true};
+  bool flg_autoplay{false};
   bool flg_loop{false};
   bool flg_goal{true};
   bool flg_font{false};

@@ -6,12 +6,19 @@
 
 #include "mapf_r/smt/solver/z3.hpp"
 
-#include "tomaqa.hpp"
+#include <tomaqa.hpp>
 
 int main(int argc, char *argv[])
 try {
   using namespace tomaqa;
   using namespace std;
+
+  bool solve = true;
+
+  if (argc >= 2 && "0"s == argv[argc-1]) {
+    solve = false;
+    --argc;
+  }
 
   // simple arguments check
   if (argc < 2 || argc > 3) {
@@ -27,7 +34,7 @@ try {
   Path path = argv[1];
 
   Graph g;
-  if (argc > 2 || contains({".g"}, path.extension())) {
+  if (argc > 2 || contains({".g", ".mapR"}, path.extension())) {
     // load graph
     ifstream g_ifs(path);
     expect(g_ifs, "Graph file not readable: "s + path.to_string());
@@ -71,12 +78,17 @@ try {
     expect(l_ifs, "Layout file not readable: "s + path.to_string());
     agent::Layout layout(l_ifs);
 
-    smt::solver::Z3 solver;
-    solver.set_graph(g);
-    solver.set_layout(layout);
+    if (solve) {
+      smt::solver::Z3 solver;
+      solver.set_graph(g);
+      solver.set_layout(layout);
 
-    if (solver.solve(cout)) {
-      plan = solver.make_plan(cout);
+      if (solver.solve(cout)) {
+        plan = solver.make_plan(cout);
+      }
+    }
+    else {
+      plan = agent::plan::Global(layout);
     }
   }
 
