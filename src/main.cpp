@@ -8,6 +8,21 @@
 
 #include <tomaqa.hpp>
 
+agent::plan::Global make_plan(bool solve, Graph& g, agent::Layout& layout)
+{
+  if (solve) {
+    smt::solver::Z3 solver;
+    solver.set_graph(g);
+    solver.set_layout(layout);
+
+    if (solver.solve(cout)) {
+      return solver.make_plan(cout);
+    }
+  }
+
+  return agent::plan::Global(layout);
+}
+
 int main(int argc, char *argv[])
 try {
   using namespace tomaqa;
@@ -77,19 +92,7 @@ try {
     ifstream l_ifs(path);
     expect(l_ifs, "Layout file not readable: "s + path.to_string());
     agent::Layout layout(l_ifs);
-
-    if (solve) {
-      smt::solver::Z3 solver;
-      solver.set_graph(g);
-      solver.set_layout(layout);
-
-      if (solver.solve(cout)) {
-        plan = solver.make_plan(cout);
-      }
-    }
-    else {
-      plan = agent::plan::Global(layout);
-    }
+    plan = make_plan(solve, g, layout);
   }
 
   // visualize
