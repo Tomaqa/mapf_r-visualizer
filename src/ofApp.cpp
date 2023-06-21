@@ -304,11 +304,6 @@ void ofApp::draw()
       ofSetColor(Color::edge);
       ofDrawLine(pos.x, pos.y, npos.x, npos.y);
     }
-
-    if (flg_font) {
-      ofSetColor(Color::font);
-      font.drawString(std::to_string(vid), pos.x + 1, pos.y + font_size + 1);
-    }
   }
 
   // draw agents
@@ -372,6 +367,11 @@ void ofApp::draw()
       ofSetColor(Color::vertex);
     }
     ofDrawCircle(pos.x, pos.y, vertex_rad);
+
+    if (flg_font) {
+      ofSetColor(Color::font);
+      font.drawString(std::to_string(vid), pos.x - vertex_rad/2, pos.y - vertex_rad/2 + font_size);
+    }
   }
 
   if (flg_snapshot) {
