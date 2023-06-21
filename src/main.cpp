@@ -4,14 +4,16 @@
 #include "../include/ofApp.hpp"
 #include "ofMain.h"
 
-#include "mapf_r/smt/solver/z3.hpp"
+#include "mapf_r/smt/solver/mathsat.hpp"
 
 #include <tomaqa.hpp>
 
 agent::plan::Global make_plan(bool solve, Graph& g, agent::Layout& layout)
 {
+  using Solver = smt::solver::Mathsat;
+
   if (solve) {
-    smt::solver::Z3 solver;
+    Solver solver;
     solver.set_graph(g);
     solver.set_layout(layout);
 
