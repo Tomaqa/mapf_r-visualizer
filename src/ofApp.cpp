@@ -50,10 +50,10 @@ ofApp::ofApp(const Graph& g)
     : ofApp(g, agent::plan::Global(), agent::plan::Global_states())
 { }
 
-ofApp::ofApp(const Graph& g, agent::plan::Global p)
+ofApp::ofApp(const Graph& g, const agent::Layout& l, agent::plan::Global p)
     : ofApp(g, move(p), agent::plan::Global_states())
 {
-  states_plan = {plan, graph()};
+  states_plan = {plan, graph(), l};
 
   makespan = plan.makespan();
 
@@ -64,8 +64,7 @@ ofApp::ofApp(const Graph& g, agent::plan::Global p)
     assert(aid == int(agents.size()));
     auto& sid = plan.cstart_id_of(aid);
     auto& start = graph().cvertex(sid);
-    //++ parametrize
-    agents.emplace_back(aid, 0.5, 1., start.cpos());
+    agents.emplace_back(aid, l.cradius_of(aid), l.cabs_v_of(aid), start.cpos());
   }
 
   init();

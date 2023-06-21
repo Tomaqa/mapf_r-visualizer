@@ -2,6 +2,7 @@
 
 #include "mapf_r/graph.hpp"
 #include "mapf_r/graph/alg.hpp"
+#include "mapf_r/agent/layout.hpp"
 #include "mapf_r/agent/plan.hpp"
 
 #include "ofMain.h"
@@ -54,7 +55,7 @@ struct ofApp : ofBaseApp {
   ofApp(const Graph*, graph::Properties, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&);
-  ofApp(const Graph&, agent::plan::Global);
+  ofApp(const Graph&, const agent::Layout&, agent::plan::Global);
   ofApp(const Graph*, graph::Properties, agent::plan::Global_states);
   ofApp(const Graph&, agent::plan::Global_states);
   ofApp(agent::plan::Global_states);

@@ -36,10 +36,11 @@ try {
   }
 
   // simple arguments check
-  if (argc < 2 || argc > 3) {
-    cout << "Usage: bin/mapf_r-visualizer <graph> [<plan> | <layout>], e.g."
-         << "\nbin/mapf_r-visualizer data/graph/sample.g data/plan/sample.p"
+  if (argc < 2 || argc > 4) {
+    cout << "Usage: bin/mapf_r-visualizer <graph> [<splan> | <layout> [<plan>]], e.g."
+         << "\nbin/mapf_r-visualizer data/graph/sample.g data/plan/sample.stp"
          << "\nbin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l"
+         << "\nbin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l data/layout/sample.p"
          << endl;
     return 0;
   }
@@ -82,21 +83,22 @@ try {
     return 0;
   }
 
+  ifstream l_ifs(path);
+  expect(l_ifs, "Layout file not readable: "s + path.to_string());
+  agent::Layout layout(l_ifs);
+
   agent::plan::Global plan;
-  if (contains({".p"}, path.extension())) {
+  if (argc == 4) {
+    path = argv[3];
     ifstream p_ifs(path);
     expect(p_ifs, "Plan file not readable: "s + path.to_string());
     plan = {p_ifs};
   }
   else {
-    ifstream l_ifs(path);
-    expect(l_ifs, "Layout file not readable: "s + path.to_string());
-    agent::Layout layout(l_ifs);
     plan = make_plan(solve, g, layout);
   }
 
-  // visualize
-  ofRunApp(new ofApp(g, move(plan)));
+  ofRunApp(new ofApp(g, layout, move(plan)));
   return 0;
 }
 catch (const Error& err) {
