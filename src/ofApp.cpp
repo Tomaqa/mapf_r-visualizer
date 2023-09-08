@@ -138,10 +138,14 @@ T ofApp::scaled(const T& t) const
   return t*scale;
 }
 
-template <typename T>
-Coord ofApp::adjusted_pos_of(const T& t) const
+Coord ofApp::window_size() const
 {
-  auto pos = t.cpos();
+  return {scaled(width-1) + 2*window_x_buffer,
+          scaled(height-1) + window_y_top_buffer + window_y_bottom_buffer};
+}
+
+Coord ofApp::adjusted_pos(Coord pos) const
+{
   pos.y = graph_prop.max.y - pos.y;
   pos = scaled(pos);
   pos += scale/2;
@@ -151,10 +155,15 @@ Coord ofApp::adjusted_pos_of(const T& t) const
   return pos;
 }
 
+template <typename T>
+Coord ofApp::adjusted_pos_of(const T& t) const
+{
+  return adjusted_pos(t.cpos());
+}
+
 void ofApp::setup()
 {
-  auto w = scaled(width) + 2*window_x_buffer;
-  auto h = scaled(height) + window_y_top_buffer + window_y_bottom_buffer;
+  const auto [w, h] = window_size();
   ofSetWindowShape(w, h);
   ofBackground(Color::bg);
   ofSetCircleResolution(32);
@@ -167,7 +176,7 @@ void ofApp::setup()
   gui.add(speed_slider.setup("speed", 0.05, 0, 0.5));
 
   cam.setVFlip(true);
-  cam.setGlobalPosition(ofVec3f(w/2, h/2 - window_y_top_buffer/2, 580));
+  cam.setGlobalPosition(ofVec3f(w/2, (h + window_y_bottom_buffer)/2, 580));
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
@@ -279,12 +288,16 @@ static void set_agent_color(const agent::Id& aid)
 
 void ofApp::draw()
 {
+  const auto [w, h] = window_size();
+
   cam.begin();
   if (flg_snapshot) {
-    ofBeginSaveScreenAsPDF(ofFilePath::getUserHomeDir() +
-                               "/Desktop/screenshot-" + ofGetTimestampString() +
-                               ".pdf",
-                           false);
+    ofBeginSaveScreenAsPDF(ofFilePath::getUserHomeDir()
+                           + "/Desktop/screenshot-" + ofGetTimestampString()
+                           + ".pdf",
+                           /*multipage*/ false, /*3D*/ false,
+                           ofRectangle(0, 0, w, h)
+    );
   }
 
   ofFill();

@@ -64,6 +64,8 @@ struct ofApp : ofBaseApp {
 
   template <typename  T>
   T scaled(const T&) const;
+  Coord window_size() const;
+  Coord adjusted_pos(Coord) const;
   template <typename  T>
   Coord adjusted_pos_of(const T&) const;
 
