@@ -242,7 +242,9 @@ void ofApp::doStep(float step)
     if (curr_action_idx == states.size()) continue;
     assert(st.cend_pos() == states[curr_action_idx].cend_pos());
     assert(st.cduration() == states[curr_action_idx].cduration());
-    if (apx_greater(st.dt(), 0)) continue;
+
+    const auto dt = st.dt();
+    if (apx_greater(dt, 0) && float(time_threshold + dt) > time_threshold) continue;
 
     const auto to_pos = st.cend_pos();
     assert(apx_equal<precision::Low>(st.cpos(), to_pos));
