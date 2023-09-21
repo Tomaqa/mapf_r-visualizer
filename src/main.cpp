@@ -17,7 +17,8 @@ agent::plan::Global make_plan(bool solve, Graph& g, agent::Layout& layout)
     solver.set_graph(g);
     solver.set_layout(layout);
 
-    if (solver.solve(cout)) {
+    solver.solve(cout);
+    if (solver.is_sat()) {
       return solver.make_plan(cout);
     }
   }
