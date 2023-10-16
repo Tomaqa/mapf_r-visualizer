@@ -308,6 +308,8 @@ void ofApp::draw()
                            + "/Desktop/screenshot-" + ofGetTimestampString()
                            + ".pdf",
                            /*multipage*/ false, /*3D*/ false,
+                           // it seems that when starting pos. > 0 only draws border elsewhere
+                           // but the actual size of the figure does not change ...
                            ofRectangle(0, 0, w + mx*2, h + my*2)
     );
   }
