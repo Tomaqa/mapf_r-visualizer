@@ -6,11 +6,13 @@
 
 #include "mapf_r/agent/plan/alg.hpp"
 
-static double get_scale(double width, double height)
+static pair<double, bool> get_scale(double w, double h)
 {
   auto window_max_w = default_screen_width - 2*screen_x_buffer - 2*window_x_buffer;
   auto window_max_h = default_screen_height - window_y_top_buffer - window_y_bottom_buffer;
-  return min(window_max_w/width, window_max_h/height) + 1;
+  auto max_w = window_max_w/w;
+  auto max_h = window_max_h/h;
+  return {min(max_w, max_h) + 1, max_w < max_h};
 }
 
 static void printKeys()
@@ -33,7 +35,7 @@ static void printKeys()
 ofApp::ofApp(const Graph* gl, graph::Properties g_prop, agent::plan::Global p, agent::plan::Global_states sp)
     : graph_l(gl)
     , graph_prop(move(g_prop))
-    , scale(get_scale(width, height))
+    , scale_pair(get_scale(width, height))
     , plan(move(p))
     , states_plan(move(sp))
 {
@@ -140,8 +142,14 @@ T ofApp::scaled(const T& t) const
 
 Coord ofApp::window_size() const
 {
-  return {scaled(width-1) + 2*window_x_buffer,
-          scaled(height-1) + window_y_top_buffer + window_y_bottom_buffer};
+  return {scaled(width-margin) + 2*screen_x_buffer + 2*window_x_buffer,
+          scaled(height-margin) + window_y_top_buffer + window_y_bottom_buffer};
+}
+
+Coord ofApp::window_min() const
+{
+  if (!scaled_x) return {scaled(min_x), window_y_bottom_buffer/2};
+  return {window_x_buffer/2, scaled(min_y)};
 }
 
 Coord ofApp::adjusted_pos(Coord pos) const
@@ -149,7 +157,7 @@ Coord ofApp::adjusted_pos(Coord pos) const
   pos.y = graph_prop.max.y - pos.y;
   pos = scaled(pos);
   pos += scale/2;
-  pos.x += window_x_buffer;
+  pos.x += screen_x_buffer + window_x_buffer;
   pos.y += window_y_top_buffer;
 
   return pos;
@@ -163,6 +171,7 @@ Coord ofApp::adjusted_pos_of(const T& t) const
 
 void ofApp::setup()
 {
+  const auto [mx, my] = window_min();
   const auto [w, h] = window_size();
   ofSetWindowShape(w, h);
   ofBackground(Color::bg);
@@ -176,7 +185,7 @@ void ofApp::setup()
   gui.add(speed_slider.setup("speed", 0.05, 0, 0.5));
 
   cam.setVFlip(true);
-  cam.setGlobalPosition(ofVec3f(w/2, (h + window_y_bottom_buffer)/2, 580));
+  cam.setGlobalPosition(ofVec3f(mx + w/2, my + h/2, 580));
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
@@ -291,6 +300,7 @@ static void set_agent_color(const agent::Id& aid)
 void ofApp::draw()
 {
   const auto [w, h] = window_size();
+  const auto [mx, my] = window_min();
 
   cam.begin();
   if (flg_snapshot) {
@@ -298,7 +308,7 @@ void ofApp::draw()
                            + "/Desktop/screenshot-" + ofGetTimestampString()
                            + ".pdf",
                            /*multipage*/ false, /*3D*/ false,
-                           ofRectangle(0, 0, w, h)
+                           ofRectangle(0, 0, w + mx*2, h + my*2)
     );
   }
 

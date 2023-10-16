@@ -16,8 +16,12 @@ struct ofApp : ofBaseApp {
   graph::Properties graph_prop;
 
   // size
-  const double width = graph_prop.width() + 2, height = graph_prop.height() + 2;
-  const double scale;
+  static constexpr double margin = 1;
+  const double width = graph_prop.width() + 2*margin, height = graph_prop.height() + 2*margin;
+  const double min_x = graph_prop.min.x, min_y = graph_prop.min.y;
+  const pair<double, bool> scale_pair;
+  const double scale = scale_pair.first;
+  const bool scaled_x = scale_pair.second;
   const double vertex_rad = scale/8;
   const double line_width = vertex_rad/2;
   const int font_size = max(int(scale/8), 6);
@@ -65,6 +69,7 @@ struct ofApp : ofBaseApp {
   template <typename  T>
   T scaled(const T&) const;
   Coord window_size() const;
+  Coord window_min() const;
   Coord adjusted_pos(Coord) const;
   template <typename  T>
   Coord adjusted_pos_of(const T&) const;
