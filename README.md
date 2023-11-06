@@ -37,14 +37,14 @@ Required: around 10 minutes
 ## Usage
 
 ```sh
-mapf_r-visualizer data/graph/sample.g data/layout/sample.l data/plan/sample.p
+bin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l data/plan/sample.p
 ```
 
 You can manipulate it via your keyboard. See printed info.
 
 When the file with plan is omitted, such as
 ```sh
-mapf_r-visualizer data/graph/sample.g data/layout/sample.l
+bin/mapf_r-visualizer data/graph/sample.g data/layout/sample.l
 ```
 then internal solver is invoked (which can take long time).
 
@@ -58,12 +58,18 @@ First, you must build it:
 cd third_party/mapf_r
 make
 ```
-Then, to generate plan `<plan>` for a graph `<graph>` and a layout `<layout>`,
+Then, to generate plan for a graph `<graph>` and a layout `<layout>`
+and to store the plan into output file `<plan>`,
 run
 ```sh
 bin/release/mapf_r -g <graph> -l <layout> -p <plan>
 ```
 (still within the directory `third_party/mapf_r`).
+For example:
+```sh
+bin/release/mapf_r -g data/graph/sample.g -l data/layout/sample.l -p sample.p
+```
+The output file should use the extension `.p`
 
 <!-- ## Input format of planning result
 
