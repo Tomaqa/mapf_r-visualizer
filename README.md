@@ -83,9 +83,9 @@ e.g.,
 - Error handling is poor
 <!-- - The grid maps in `assets/` are from [MAPF benchmarks](https://movingai.com/benchmarks/mapf.html) -->
 
-## Licence
+## License
 
-This software is released under the MIT License, see [LICENSE.txt](LICENCE.txt).
+This software is released under the MIT License, see [LICENSE](LICENSE.md).
 
 <!-- ## Author
 
