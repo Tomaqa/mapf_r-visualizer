@@ -1,47 +1,71 @@
 <div align="center">
 
-<img src="./assets/logo.png" alt="Logo" width="400">
-
-# mapf-visualizer
+# mapf_r-visualizer
 
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-[![ci](https://github.com/Kei18/mapf-visualizer/actions/workflows/ci.yml/badge.svg)](https://github.com/Kei18/mapf-visualizer/actions/workflows/ci.yml)
 
-Simple multi-agent pathfinding (MAPF) visualizer for research usage.
-
-Based on [openFrameworks](https://openframeworks.cc/), written in C++, developed for macOS, untested on Linux.
+Multi-agent pathfinding with continuous time (MAPF_R) visualizer
+for research and educational usage.
 
 </div>
 
-## Demo
+Forked from [mapf-visualizer](https://github.com/Kei18/mapf-visualizer),
+based on [openFrameworks](https://openframeworks.cc/).
+
+Written in C++, developed for Linux (Arch Linux, Debian, Ubuntu).
+
+<!-- ## Demo
 
 ![room-32-32-4](./assets/demo_room.gif)
 
 ![tunnel, planning with four agents](./assets/demo_tunnel.gif)
 
-![ost003d, planning with 1000 agents](./assets/demo_ost003d.gif)
+![ost003d, planning with 1000 agents](./assets/demo_ost003d.gif) -->
 
 ## Install
 
 ```sh
-git clone --recursive https://github.com/Kei18/mapf-visualizer.git
-cd mapf-visualizer
-bash third_party/openFrameworks/scripts/osx/download_libs.sh
+git clone --recurse-submodules https://github.com/Tomaqa/mapf_r-visualizer.git
+cd mapf_r-visualizer
+./install_linux.sh <distro>
 make
-echo "export PATH=$(pwd)/bin/mapf-visualizer.app/Contents/MacOS:\$PATH" >> ~/.bashrc
 ```
+where `<distro>` is one of `archlinux`, `debian`, `ubuntu`.
 
-required: around 10 minutes
+Required: around 10 minutes
 
 ## Usage
 
 ```sh
-mapf-visualizer assets/random-32-32-20.map assets/demo_random-32-32-20.txt
+mapf_r-visualizer data/graph/sample.g data/layout/sample.l data/plan/sample.p
 ```
 
 You can manipulate it via your keyboard. See printed info.
 
-## Input format of planning result
+When the file with plan is omitted, such as
+```sh
+mapf_r-visualizer data/graph/sample.g data/layout/sample.l
+```
+then internal solver is invoked (which can take long time).
+
+
+If a plan is not available for a pair of graph and layout,
+you can pre-generate it.
+It is not supported directly by this tool though,
+you have to use my solver.
+First, you must build it:
+```sh
+cd third_party/mapf_r
+make
+```
+Then, to generate plan `<plan>` for a graph `<graph>` and a layout `<layout>`,
+run
+```sh
+bin/release/mapf_r -g <graph> -l <layout> -p <plan>
+```
+(still within the directory `third_party/mapf_r`).
+
+<!-- ## Input format of planning result
 
 e.g.,
 ```txt
@@ -52,24 +76,17 @@ e.g.,
 
 `(x, y)` denotes location.
 `(0, 0)` is the left-top point.
-`(x, 0)` is the location at `x`-th column and 1st row.
+`(x, 0)` is the location at `x`-th column and 1st row. -->
 
 ## Notes
 
-- Please specify **correct** files. I omitted error handling
-- The grid maps in `assets/` are from [MAPF benchmarks](https://movingai.com/benchmarks/mapf.html)
-- The font in `visualizer/bin/data` is from [Google Fonts](https://fonts.google.com/)
-- This repo is forked from a series of my previous studies such as [pibt2](https://kei18.github.io/pibt2), [mapf-IR](https://kei18.github.io/mapf-IR/), [tswap](https://kei18.github.io/tswap/), [otimapp](https://kei18.github.io/otimapp/), etc
-- Auto formatting (clang-format) when committing:
-```export
-git config core.hooksPath .githooks && chmod a+x .githooks/pre-commit
-```
-- I'm happy if this repo helps somebody. Please use "Cite this repository" on this page for citation.
+- Error handling is poor
+<!-- - The grid maps in `assets/` are from [MAPF benchmarks](https://movingai.com/benchmarks/mapf.html) -->
 
 ## Licence
 
 This software is released under the MIT License, see [LICENSE.txt](LICENCE.txt).
 
-## Author
+<!-- ## Author
 
-[Keisuke Okumura](https://kei18.github.io) is a Ph.D. student at Tokyo Institute of Technology, interested in controlling multiple moving agents.
+[Keisuke Okumura](https://kei18.github.io) is a Ph.D. student at Tokyo Institute of Technology, interested in controlling multiple moving agents. -->
