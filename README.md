@@ -2,7 +2,7 @@
 
 # mapf_r-visualizer
 
-[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE.md)
 
 Multi-agent pathfinding with continuous time (MAPF_R) visualizer
 for research and educational usage.
