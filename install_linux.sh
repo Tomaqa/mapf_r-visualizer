@@ -16,13 +16,20 @@ DISTROS=(`cd "$LINUX_DIR"; ls -d */ | sed -nr '/^extra/n;s|(.*)/$|\1|p'`)
 DISTRO_DIR="$LINUX_DIR"/$1
 
 function run {
-    printf "<< Running '%s' ... >>\n" "$1"
-    bash "$1"
-    return $?
+    local cmd="$1"
+
+    printf "<< Running '%s' ... >>\n" "$cmd"
+    bash "$cmd"
+    local ret=$?
+    (( $ret == 0 )) && return 0
+
+    printf "\nCommand '%s' failed!\n" "$cmd" >&2
+    exit $ret
 }
 
-run "$DISTRO_DIR"/install_dependencies.sh &&\
-run "$LINUX_DIR"/download_libs.sh &&\
-printf '\nNow you can run `make`.\n'
+run "$DISTRO_DIR"/install_codecs.sh
+run "$DISTRO_DIR"/install_dependencies.sh
+run "$LINUX_DIR"/download_libs.sh
 
-exit $?
+printf '\nSuccess.\nNow you can run `make`.\n'
+exit 0
