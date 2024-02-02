@@ -125,13 +125,13 @@ void ofApp::init()
     assert(st == states.front());
     assert(st.dt() == st.cduration());
     assert(st.cduration() > 0);
-    first_time_threshold = min<float>(first_time_threshold, st.dt());
+    first_switch_time_threshold = min<float>(first_switch_time_threshold, st.dt());
   }
 
   agents_action_idx.resize(agents.size());
 
-  assert(first_time_threshold <= makespan);
-  time_threshold = first_time_threshold;
+  assert(first_switch_time_threshold <= makespan);
+  switch_time_threshold = first_switch_time_threshold;
 }
 
 template <typename T>
@@ -182,7 +182,7 @@ void ofApp::setup()
   // setup gui
   gui.setup();
   gui.add(timestep_slider.setup("time step", 0, 0, makespan));
-  gui.add(speed_slider.setup("speed", 0.05, 0, 0.5));
+  gui.add(speed_slider.setup("speed", 0.05, 0, 1.));
 
   cam.setVFlip(true);
   cam.setGlobalPosition(ofVec3f(mx + w/2, my + h/2, 580));
@@ -198,7 +198,7 @@ void ofApp::reset()
 
   if (states_plan.empty()) return;
 
-  time_threshold = first_time_threshold;
+  switch_time_threshold = first_switch_time_threshold;
   for (auto& ag : agents) {
     auto& aid = ag.cid();
     ag.state() = states_plan.cat(aid).front();
@@ -206,42 +206,70 @@ void ofApp::reset()
   }
 }
 
+template <ofApp::StepMode modeV>
 void ofApp::doStep(float step)
+{
+  static_assert(modeV != StepMode::partial);
+  return doStepImpl<modeV>(step, timestep_slider, timestep_slider+step);
+}
+
+template <ofApp::StepMode modeV>
+void ofApp::doStepImpl(float step, float t, float t_next)
 {
   if (states_plan.empty()) return;
 
-  const float t = timestep_slider;
-  const float t_next = t + step;
-
-  assert(t < time_threshold || apx_equal(t, makespan));
+  assert(t < switch_time_threshold || apx_equal(t, makespan));
 
   if (t_next < 0) {
-    return reset();
+    reset();
+    return;
   }
 
-  const bool finish = t_next > makespan;
-  const bool transition = !finish && t_next >= time_threshold;
-  if (finish) {
-    assert(t_next >= time_threshold);
-    if (flg_loop) return reset();
+  [[maybe_unused]] const bool finish = t_next > makespan;
+  if constexpr (modeV == StepMode::partial) {
+    assert(!finish);
+  }
+  else if (finish) {
+    assert(t_next >= switch_time_threshold);
+    if (flg_loop) {
+      reset();
+      return;
+    }
 
+    doStepAdvanceAgs(makespan - t);
     timestep_slider = makespan;
-    step = makespan - t;
-  }
-  else if (!transition) {
-    timestep_slider = t_next;
-  }
-  else {
-    timestep_slider = time_threshold;
-    step = time_threshold - t;
+    return;
   }
 
+  const bool do_switch = t_next >= switch_time_threshold;
+  if (!do_switch) {
+    doStepAdvanceAgs(step);
+    timestep_slider = t_next;
+    return;
+  }
+
+  const float partial_step = switch_time_threshold - t;
+  const float prev_switch_time_threshold = switch_time_threshold;
+  doStepAdvanceAgs(partial_step);
+  doStepSwitch(partial_step);
+  if (modeV == StepMode::manual || t_next == prev_switch_time_threshold) {
+    timestep_slider = prev_switch_time_threshold;
+    return;
+  }
+
+  step = t_next - prev_switch_time_threshold;
+  return doStepImpl<StepMode::partial>(step, prev_switch_time_threshold, t_next);
+}
+
+void ofApp::doStepAdvanceAgs(float step)
+{
   for (auto& ag : agents) {
     ag.state().advance(step);
   }
+}
 
-  if (!transition) return;
-
+void ofApp::doStepSwitch(float step)
+{
   for (auto& ag : agents) {
     auto& aid = ag.cid();
     auto& st = ag.state();
@@ -253,7 +281,7 @@ void ofApp::doStep(float step)
     assert(st.cduration() == states[curr_action_idx].cduration());
 
     const auto dt = st.dt();
-    if (apx_greater(dt, 0) && float(time_threshold + dt) > time_threshold) continue;
+    if (apx_greater(dt, 0) && float(switch_time_threshold + dt) > switch_time_threshold) continue;
 
     const auto to_pos = st.cend_pos();
     assert(apx_equal<precision::Low>(st.cpos(), to_pos));
@@ -265,23 +293,23 @@ void ofApp::doStep(float step)
 
     st = states[curr_action_idx];
     assert(st == states[curr_action_idx]);
-    assert(st.cpos() == to_pos);
+    assert(apx_equal<precision::Huge>(st.cpos(), to_pos));
     assert(st.cduration() > 0);
   }
 
-  time_threshold = min(agents, [&](auto& ag) -> float {
+  switch_time_threshold = min(agents, [&](auto& ag) -> float {
     auto& aid = ag.cid();
     auto& curr_action_idx = agents_action_idx[aid];
     const auto& states = states_plan.cat(aid);
     if (curr_action_idx == states.size()) return t_inf;
-    const float thres = time_threshold + ag.cstate().dt();
-    assert(thres > time_threshold);
+    const float thres = switch_time_threshold + ag.cstate().dt();
+    assert(thres > switch_time_threshold);
     return thres;
   });
 
-  if (time_threshold > makespan) {
-    assert(apx_equal<precision::Low>(time_threshold, makespan) || time_threshold == t_inf);
-    time_threshold = makespan;
+  if (switch_time_threshold > makespan) {
+    assert(apx_equal<precision::Low>(switch_time_threshold, makespan) || switch_time_threshold == t_inf);
+    switch_time_threshold = makespan;
   }
 }
 
@@ -435,9 +463,9 @@ void ofApp::keyPressed(int key)
     line_mode = static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
     return;
   case OF_KEY_RIGHT:
-    return doStep(speed_slider);
+    return doStep<StepMode::manual>(speed_slider);
   case OF_KEY_LEFT:
-    return doStep(-speed_slider);
+    return doStep<StepMode::manual>(-speed_slider);
   case OF_KEY_UP:
     speed_slider = min<float>(speed_slider + 0.01, speed_slider.getMax());
     return;

@@ -31,8 +31,9 @@ struct ofApp : ofBaseApp {
   Agents agents{};
   float makespan{};
   static constexpr float t_inf = limits<float>::infinity();
-  float first_time_threshold{t_inf};
-  float time_threshold{t_inf};
+  float first_switch_time_threshold{t_inf};
+  float switch_time_threshold{t_inf};
+  float _time_threshold{t_inf};
   Vector<Idx> agents_action_idx{};
 
   // flg
@@ -74,9 +75,16 @@ struct ofApp : ofBaseApp {
   template <typename  T>
   Coord adjusted_pos_of(const T&) const;
 
+  enum class StepMode { def = 0, partial, manual };
+
   void setup() override;
   void reset();
+  template <StepMode = {}>
   void doStep(float step);
+  template <StepMode = {}>
+  void doStepImpl(float step, float t, float t_next);
+  void doStepAdvanceAgs(float step);
+  void doStepSwitch(float step);
   void update() override;
   void draw() override;
 
