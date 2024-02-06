@@ -198,7 +198,10 @@ void ofApp::setup()
   gui_panel.add(speed_slider.setup("speed", 0.05, 0, 1.));
 
   cam.setVFlip(true);
-  cam.setGlobalPosition(ofVec3f(mx + w/2, my + h/2, 580));
+  const float cam_w = w + 2*mx;
+  const float cam_h = h + 2*my;
+  const float cam_z = hypot(cam_w, cam_h)/2;
+  cam.setGlobalPosition(ofVec3f(cam_w/2, cam_h/2, cam_z));
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
@@ -209,6 +212,10 @@ void ofApp::setup()
   ofAddListener(ofxGifEncoder::OFX_GIF_SAVE_FINISHED, this, &ofApp::onGifSaved);
 
   printKeys();
+
+  assert(int(w) == ofGetWidth());
+  assert(int(h) == ofGetHeight());
+  // .. but later it will most likely not hold any more, probably because of window scaling etc.
 }
 
 void ofApp::reset()
