@@ -189,6 +189,9 @@ void ofApp::setup()
   ofSetFrameRate(30);
   font.load("MuseoModerno-VariableFont_wght.ttf", font_size, true, false, true);
 
+  assert(int(w) == ofGetWidth());
+  assert(int(h) == ofGetHeight());
+
   // setup gui
   gui_panel.setup();
   gui_panel.add(timestep_slider.setup("time step", 0, 0, makespan));
@@ -199,10 +202,10 @@ void ofApp::setup()
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
-  // record_fbo.allocate(ofGetWidth(), ofGetHeight(), GL_RGB);
-  // gif_encoder.setup(ofGetWidth(), ofGetHeight(), 1./ofGetTargetFrameRate());
-  record_fbo.allocate(w + mx*2, h + my*2, GL_RGB);
-  gif_encoder.setup(w + mx*2, h + my*2, 1./ofGetTargetFrameRate());
+  // the sizes do not matter too much, it always gets the full view
+  // .. but also always with some white borders ..
+  record_fbo.allocate(w, h, GL_RGB);
+  gif_encoder.setup(w, h, 1./ofGetTargetFrameRate());
   ofAddListener(ofxGifEncoder::OFX_GIF_SAVE_FINISHED, this, &ofApp::onGifSaved);
 
   printKeys();
