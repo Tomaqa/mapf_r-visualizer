@@ -5,3 +5,6 @@
 [submodule "third_party/mapf_r"]
 	path = third_party/mapf_r
 	url = https://gitlab.com/Tomaqa/mapf_r.git
+[submodule "third_party/ofxGifEncoder"]
+	path = third_party/ofxGifEncoder
+	url = https://github.com/ofxyz/ofxGifEncoder.git

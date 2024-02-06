@@ -29,6 +29,7 @@ static void printKeys()
   std::cout << "- up    : speed up" << std::endl;
   std::cout << "- down  : speed down" << std::endl;
   std::cout << "- space : screenshot (saved in Desktop)" << std::endl;
+  std::cout << "- c : record to GIF (saved in Desktop)" << std::endl;
   std::cout << "- esc : terminate" << std::endl;
 }
 
@@ -169,32 +170,57 @@ Coord ofApp::adjusted_pos_of(const T& t) const
   return adjusted_pos(t.cpos());
 }
 
+bool ofApp::recording() const
+{
+  if (!flg_record) return false;
+  if (!recording_may_start) return false;
+  if (finished) return false;
+  return true;
+}
+
 void ofApp::setup()
 {
   const auto [mx, my] = window_min();
   const auto [w, h] = window_size();
   ofSetWindowShape(w, h);
   ofBackground(Color::bg);
+  ofDisableAlphaBlending();
   ofSetCircleResolution(32);
   ofSetFrameRate(30);
   font.load("MuseoModerno-VariableFont_wght.ttf", font_size, true, false, true);
 
   // setup gui
-  gui.setup();
-  gui.add(timestep_slider.setup("time step", 0, 0, makespan));
-  gui.add(speed_slider.setup("speed", 0.05, 0, 1.));
+  gui_panel.setup();
+  gui_panel.add(timestep_slider.setup("time step", 0, 0, makespan));
+  gui_panel.add(speed_slider.setup("speed", 0.05, 0, 1.));
 
   cam.setVFlip(true);
   cam.setGlobalPosition(ofVec3f(mx + w/2, my + h/2, 580));
   cam.removeAllInteractions();
   cam.addInteraction(ofEasyCam::TRANSFORM_TRANSLATE_XY, OF_MOUSE_BUTTON_LEFT);
 
+  // record_fbo.allocate(ofGetWidth(), ofGetHeight(), GL_RGB);
+  // gif_encoder.setup(ofGetWidth(), ofGetHeight(), 1./ofGetTargetFrameRate());
+  record_fbo.allocate(w + mx*2, h + my*2, GL_RGB);
+  gif_encoder.setup(w + mx*2, h + my*2, 1./ofGetTargetFrameRate());
+  ofAddListener(ofxGifEncoder::OFX_GIF_SAVE_FINISHED, this, &ofApp::onGifSaved);
+
   printKeys();
 }
 
 void ofApp::reset()
 {
+  flg_record = false;
+
   timestep_slider = 0;
+
+  finished = false;
+
+  recording_may_start = false;
+
+  gif_encoder.stop();
+  // gif_encoder.waitForThread();
+  gif_encoder.reset();
 
   if (states_plan.empty()) return;
 
@@ -217,6 +243,9 @@ template <ofApp::StepMode modeV>
 void ofApp::doStepImpl(float step, float t, float t_next)
 {
   if (states_plan.empty()) return;
+  if (finished) return;
+
+  recording_may_start = true;
 
   assert(t < switch_time_threshold || apx_equal(t, makespan));
 
@@ -231,6 +260,7 @@ void ofApp::doStepImpl(float step, float t, float t_next)
   }
   else if (finish) {
     assert(t_next >= switch_time_threshold);
+
     if (flg_loop) {
       reset();
       return;
@@ -238,6 +268,7 @@ void ofApp::doStepImpl(float step, float t, float t_next)
 
     doStepAdvanceAgs(makespan - t);
     timestep_slider = makespan;
+    onFinish();
     return;
   }
 
@@ -330,7 +361,13 @@ void ofApp::draw()
   const auto [w, h] = window_size();
   const auto [mx, my] = window_min();
 
+  if (recording()) {
+    record_fbo.begin();
+    ofClear(Color::bg);
+  }
+
   cam.begin();
+
   if (flg_snapshot) {
     ofBeginSaveScreenAsPDF(ofFilePath::getUserHomeDir()
                            + "/Desktop/screenshot-" + ofGetTimestampString()
@@ -341,8 +378,6 @@ void ofApp::draw()
                            ofRectangle(0, 0, w + mx*2, h + my*2)
     );
   }
-
-  ofFill();
 
   // draw edges
   ofSetLineWidth(line_width);
@@ -435,7 +470,47 @@ void ofApp::draw()
   }
 
   cam.end();
-  gui.draw();
+
+  if (!recording() || !gui_panel.isMinimized()) gui_panel.draw();
+
+  if (!recording()) return;
+
+  record_fbo.end();
+  assert(record_fbo.getWidth() > 0);
+  assert(record_fbo.getHeight() > 0);
+  ofSetColor(Color::bg);
+  record_fbo.draw(0, 0);
+
+  record_fbo.readToPixels(record_pixels);
+  assert(record_pixels.getWidth() > 0);
+  assert(record_pixels.getHeight() > 0);
+  assert(record_pixels.getBitsPerPixel() == 24);
+  gif_encoder.addFrame(record_pixels.getData(),
+                       record_pixels.getWidth(),
+                       record_pixels.getHeight(),
+                       record_pixels.getBitsPerPixel()
+  );
+}
+
+void ofApp::onFinish()
+{
+  assert(!finished);
+  finished = true;
+
+  if (flg_record) saveRecord();
+}
+
+void ofApp::saveRecord()
+{
+  assert(flg_record);
+  flg_record = false;
+  recording_may_start = false;
+
+  const string fn = ofFilePath::getUserHomeDir()
+                  + "/Desktop/record-" + ofGetTimestampString()
+                  + ".gif";
+  cout << "saving gif as " << fn << " ..." << endl;
+  gif_encoder.save(fn);
 }
 
 void ofApp::keyPressed(int key)
@@ -444,7 +519,13 @@ void ofApp::keyPressed(int key)
   case 'r':
     return reset();
   case 'p':
-    flg_autoplay = !flg_autoplay;
+    if (!flg_autoplay) {
+      flg_autoplay = true;
+    }
+    else {
+      flg_autoplay = false;
+      if (!recording()) recording_may_start = false;
+    }
     return;
   case 'l':
     flg_loop = !flg_loop;
@@ -455,9 +536,6 @@ void ofApp::keyPressed(int key)
   case 'f':
     flg_font = !flg_font;
     flg_font &= (scale - font_size > 6);
-    return;
-  case 32:
-    flg_snapshot = true;  // space
     return;
   case 'v':
     line_mode = static_cast<LINE_MODE>(((int)line_mode + 1) % (int)LINE_MODE::NUM);
@@ -471,6 +549,17 @@ void ofApp::keyPressed(int key)
     return;
   case OF_KEY_DOWN:
     speed_slider = max<float>(speed_slider - 0.01, speed_slider.getMin());
+    return;
+  case 32:
+    flg_snapshot = true;  // space
+    return;
+  case 'c':
+    if (!flg_record) {
+      flg_record = true;
+    }
+    else {
+      saveRecord();
+    }
     return;
   }
 }
@@ -494,3 +583,16 @@ void ofApp::windowResized(int w, int h) {}
 void ofApp::gotMessage(ofMessage msg) {}
 
 void ofApp::dragEvent(ofDragInfo dragInfo) {}
+
+void ofApp::onGifSaved(string& fileName)
+{
+  cout << "saved gif as " << fileName << endl;
+  gif_encoder.reset();
+}
+
+void ofApp::exit()
+{
+  ofBaseApp::exit();
+
+  gif_encoder.waitForThread();
+}

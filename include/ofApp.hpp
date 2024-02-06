@@ -8,6 +8,8 @@
 #include "ofMain.h"
 #include "ofxGui.h"
 
+#include "ofxGifEncoder.h"
+
 using namespace mapf_r;
 
 struct ofApp : ofBaseApp {
@@ -36,12 +38,17 @@ struct ofApp : ofBaseApp {
   float _time_threshold{t_inf};
   Vector<Idx> agents_action_idx{};
 
+  bool finished{};
+
+  bool recording_may_start{};
+
   // flg
   bool flg_autoplay{false};
   bool flg_loop{false};
   bool flg_goal{true};
   bool flg_font{false};
   bool flg_snapshot{false};
+  bool flg_record{false};
 
   enum struct LINE_MODE { STRAIGHT, PATH, NONE, NUM };
   LINE_MODE line_mode{LINE_MODE::STRAIGHT};
@@ -52,10 +59,15 @@ struct ofApp : ofBaseApp {
   // gui
   ofxFloatSlider timestep_slider;
   ofxFloatSlider speed_slider;
-  ofxPanel gui;
+  ofxPanel gui_panel;
 
   // camera
   ofEasyCam cam;
+
+  // record
+  ofxGifEncoder gif_encoder;
+  ofFbo record_fbo;
+  ofPixels record_pixels;
 
   ofApp(const Graph*, graph::Properties, agent::plan::Global, agent::plan::Global_states);
   ofApp(const Graph&, agent::plan::Global, agent::plan::Global_states);
@@ -75,6 +87,8 @@ struct ofApp : ofBaseApp {
   template <typename  T>
   Coord adjusted_pos_of(const T&) const;
 
+  bool recording() const;
+
   enum class StepMode { def = 0, partial, manual };
 
   void setup() override;
@@ -88,6 +102,9 @@ struct ofApp : ofBaseApp {
   void update() override;
   void draw() override;
 
+  void onFinish();
+  void saveRecord();
+
   void keyPressed(int key) override;
   void keyReleased(int key) override;
   void mouseMoved(int x, int y) override;
@@ -99,4 +116,8 @@ struct ofApp : ofBaseApp {
   void windowResized(int w, int h) override;
   void dragEvent(ofDragInfo dragInfo) override;
   void gotMessage(ofMessage msg) override;
+
+  void onGifSaved(string& fileName);
+
+  void exit() override;
 };
