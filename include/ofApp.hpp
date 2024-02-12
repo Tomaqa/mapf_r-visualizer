@@ -47,7 +47,7 @@ struct ofApp : ofBaseApp {
   bool flg_loop{false};
   bool flg_goal{true};
   bool flg_font{false};
-  bool flg_snapshot{false};
+  bool flg_screenshot{false};
   bool flg_record{false};
 
   enum struct LINE_MODE { STRAIGHT, PATH, NONE, NUM };
@@ -88,6 +88,7 @@ struct ofApp : ofBaseApp {
   Coord adjusted_pos_of(const T&) const;
 
   bool recording() const;
+  bool screenshot_or_recording() const;
 
   enum class StepMode { def = 0, partial, manual };
 

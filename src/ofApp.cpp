@@ -178,6 +178,11 @@ bool ofApp::recording() const
   return true;
 }
 
+bool ofApp::screenshot_or_recording() const
+{
+  return flg_screenshot || recording();
+}
+
 void ofApp::setup()
 {
   const auto [mx, my] = window_min();
@@ -378,7 +383,7 @@ void ofApp::draw()
 
   cam.begin();
 
-  if (flg_snapshot) {
+  if (flg_screenshot) {
     ofBeginSaveScreenAsPDF(ofFilePath::getUserHomeDir()
                            + "/Desktop/screenshot-" + ofGetTimestampString()
                            + ".pdf",
@@ -474,9 +479,11 @@ void ofApp::draw()
     }
   }
 
-  if (flg_snapshot) {
+  // this does not capture the gui panel, but if it does it works badly,
+  // it misses the sliders and the position is corrupt since it is not global but relative to the cam
+  if (flg_screenshot) {
     ofEndSaveScreenAsPDF();
-    flg_snapshot = false;
+    flg_screenshot = false;
   }
 
   cam.end();
@@ -561,7 +568,7 @@ void ofApp::keyPressed(int key)
     speed_slider = max<float>(speed_slider - 0.01, speed_slider.getMin());
     return;
   case 32:
-    flg_snapshot = true;  // space
+    flg_screenshot = true;  // space
     return;
   case 'c':
     if (!flg_record) {
