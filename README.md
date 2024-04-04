@@ -14,13 +14,18 @@ based on [openFrameworks](https://openframeworks.cc/).
 
 Written in C++, developed for Linux (Arch Linux, Debian, Ubuntu).
 
-<!-- ## Demo
+## Demo
 
-![room-32-32-4](./assets/demo_room.gif)
+![grid_04x04_k3_k4_D](doc/img/gif/grid/grid_04x04_k3_k4_D_s005.gif)
+![grid_04x04_k3_k4_D_2smaller](doc/img/gif/grid/grid_04x04_k3_k4_D_2smaller_s005.gif)
 
-![tunnel, planning with four agents](./assets/demo_tunnel.gif)
+![grid_04x04_k3_k4_E](doc/img/gif/grid/grid_04x04_k3_k4_E_s005.gif)
 
-![ost003d, planning with 1000 agents](./assets/demo_ost003d.gif) -->
+![grid_04x04_k3_k6_D](doc/img/gif/grid/grid_04x04_k3_k6_D_s01.gif)
+![grid_04x04_k3_k6_E](doc/img/gif/grid/grid_04x04_k3_k6_E_s01.gif)
+
+![empty-16-16-random_n3-1_k30_s01](doc/img/gif/empty/empty-16-16-random_n3-1_k30_s01.gif)
+![empty-16-16-random_n3-5_k50_s01](doc/img/gif/empty/empty-16-16-random_n3-5_k50_s01.gif)
 
 ## Install
 
